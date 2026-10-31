@@ -186,9 +186,9 @@ Requires the fork's rebuilt `sysctl(8)` (new MIB family, ERRATA E27).
 |---|---|---|---|
 | `mode` | 0–3 (§1.2) | 0 | Serialized transition per DESIGN §5.7: close producers/commits, quiesce RX and callbacks, wait SMR and worker barriers, flush, then enable. Mode 2 returns EOPNOTSUPP until built. |
 | `max` | 1–4096 flows | 4096 | Change only in mode 0; EBUSY otherwise. Learn is refused when full. |
-| `idle` | seconds | 30 | A flow with no hits for this long is freed by the GC. |
-| `budget` | WQEs per interrupt | 64 | R12. Effective only in modes 1–3. 0 = unbounded diagnostic setting; not an R12 acceptance setting. Mode 0 always uses the stock loop. |
-| `yield` | microseconds | tbd (T0.9) | Interrupt hold-off after budget exhaustion in modes 1–3, rounded up to the hardware-timed mechanism's granularity (POW time-counter period, ≈6.65 µs at stock settings); reading returns the effective value. A `timeout(9)` re-arm is not acceptable: it waits at least one 10 ms tick (DESIGN §5.6). Mode 0 restores stock interrupt settings. |
+| `idle` | 1–3600 seconds | 30 | A flow with no hits for this long is freed by the GC. |
+| `budget` | 0–4096 WQEs per interrupt | 64 | R12. Effective only in modes 1–3. 0 = unbounded diagnostic setting; not an R12 acceptance setting. Mode 0 always uses the stock loop. |
+| `yield` | 0–100000 microseconds | 0 until T0.9 sets it | Interrupt hold-off after budget exhaustion in modes 1–3, rounded up to the hardware-timed mechanism's granularity (POW time-counter period, ≈6.65 µs at stock settings); reading returns the effective value. A `timeout(9)` re-arm is not acceptable: it waits at least one 10 ms tick (DESIGN §5.6). Mode 0 restores stock interrupt settings. |
 | `debug` | 0/1 | 0 | Rate-limited printf of learn refusals and invalidations. |
 
 ### 6.2 kstat

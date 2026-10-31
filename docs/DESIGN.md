@@ -130,6 +130,10 @@ struct flow_md_ops {
 	void	(*fmo_sched_set)(u_int mode, u_int budget, u_int yield_us);
 		/* process context, no spinlock held; bounded RX for modes
 		   1-3, stock settings for mode 0 (§5.6, §5.7 step 6) */
+	u_int	(*fmo_yield_round)(u_int yield_us);
+		/* effective hold-off for a requested net.flow.yield: the
+		   mechanism's granularity, rounded up. No side effects; any
+		   context. The setter stores the result (ERRATA E81). */
 };
 void	flow_md_register(const struct flow_md_ops *);
 

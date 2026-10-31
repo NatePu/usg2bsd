@@ -1,0 +1,462 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NP <50584693+NatePu@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 09:57:39 -0400
+Subject: [PATCH] T1.1: net.flow sysctl plumbing
+
+- sys/socket.h: pseudo_AF_FLOW 37, AF_MAX 38, PF_FLOW; CTL_NET_NAMES gets
+  a { 0, 0 } placeholder for AF_FRAME (36) and "flow" (37).
+- net/if_flow.h: FLOWCTL_* and FLOWCTL_NAMES, outside _KERNEL.
+- kern/uipc_domain.c: PF_FLOW branch in net_sysctl(), inside
+  #ifndef SMALL_KERNEL and #if NFLOW > 0.
+- net/if_flow.c: flow_sysctl() with sysctl_int_bounded() and the SPEC 6.1
+  bounds (ERRATA E82); mode through a flow_ctl_lock-serialised setter
+  running the DESIGN 5.7 transition skeleton; mode 2 EOPNOTSUPP before
+  anything changes; max only in mode 0 (EBUSY); budget/yield stored
+  while off and applied through the transition when active; yield stored
+  after the MD rounding op (ERRATA E81); flow_gen_bump().
+- net/if_flowvar.h: fmo_yield_round in the MD ops.
+- sbin/sysctl: net.flow names, PF_FLOW case and sysctl_flow().
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ sbin/sysctl/sysctl.c   |  27 ++++++
+ sys/kern/uipc_domain.c |   8 ++
+ sys/net/if_flow.c      | 206 +++++++++++++++++++++++++++++++++++++++++
+ sys/net/if_flow.h      |  21 +++++
+ sys/net/if_flowvar.h   |   6 ++
+ sys/sys/socket.h       |   6 +-
+ 6 files changed, 273 insertions(+), 1 deletion(-)
+
+diff --git a/sbin/sysctl/sysctl.c b/sbin/sysctl/sysctl.c
+index ea1de6d9..f66a768d 100644
+--- a/sbin/sysctl/sysctl.c
++++ b/sbin/sysctl/sysctl.c
+@@ -72,6 +72,7 @@
+ #include <net/pfvar.h>
+ #include <net/if_pfsync.h>
+ #include <net/pipex.h>
++#include <net/if_flow.h>
+ 
+ #include <netinet/ip6.h>
+ #include <netinet/icmp6.h>
+@@ -199,6 +200,7 @@ int sysctl_link(char *, char **, int *, int, int *);
+ int sysctl_bpf(char *, char **, int *, int, int *);
+ int sysctl_mpls(char *, char **, int *, int, int *);
+ int sysctl_pipex(char *, char **, int *, int, int *);
++int sysctl_flow(char *, char **, int *, int, int *);
+ static int sysctl_vfs(char *, char **, int[], int, int *);
+ static int sysctl_vfsgen(char *, char **, int[], int, int *);
+ int sysctl_bios(char *, char **, int *, int, int *);
+@@ -737,6 +739,12 @@ parse(char *string, int flags)
+ 				return;
+ 			break;
+ 		}
++		if (mib[1] == PF_FLOW) {
++			len = sysctl_flow(string, &bufp, mib, flags, &type);
++			if (len < 0)
++				return;
++			break;
++		}
+ 		if (flags == 0)
+ 			return;
+ 		warnx("use netstat to view %s information", string);
+@@ -1514,6 +1522,7 @@ struct ctlname divertname[] = DIVERTCTL_NAMES;
+ struct ctlname bpfname[] = CTL_NET_BPF_NAMES;
+ struct ctlname ifqname[] = CTL_IFQ_NAMES;
+ struct ctlname pipexname[] = PIPEXCTL_NAMES;
++struct ctlname flowname[] = FLOWCTL_NAMES;
+ struct list inetlist = { inetname, IPPROTO_MAXID };
+ struct list inetvars[] = {
+ 	{ ipname, IPCTL_MAXID },	/* ip */
+@@ -1779,6 +1788,7 @@ struct list inetvars[] = {
+ struct list bpflist = { bpfname, NET_BPF_MAXID };
+ struct list ifqlist = { ifqname, IFQCTL_MAXID };
+ struct list pipexlist = { pipexname, PIPEXCTL_MAXID };
++struct list flowlist = { flowname, FLOWCTL_MAXID };
+ 
+ struct list kernmalloclist = { kernmallocname, KERN_MALLOC_MAXID };
+ struct list forkstatlist = { forkstatname, KERN_FORKSTAT_MAXID };
+@@ -2433,6 +2443,23 @@ sysctl_mpls(char *string, char **bufpp, int mib[], int flags, int *typep)
+ 	return (3);
+ }
+ 
++/* handle net.flow requests */
++int
++sysctl_flow(char *string, char **bufpp, int mib[], int flags, int *typep)
++{
++	int indx;
++
++	if (*bufpp == NULL) {
++		listall(string, &flowlist);
++		return (-1);
++	}
++	if ((indx = findname(string, "third", bufpp, &flowlist)) == -1)
++		return (-1);
++	mib[2] = indx;
++	*typep = flowlist.list[indx].ctl_type;
++	return (3);
++}
++
+ /* handle PIPEX requests */
+ int
+ sysctl_pipex(char *string, char **bufpp, int mib[], int flags, int *typep)
+diff --git a/sys/kern/uipc_domain.c b/sys/kern/uipc_domain.c
+index d76bdcce..a64e2331 100644
+--- a/sys/kern/uipc_domain.c
++++ b/sys/kern/uipc_domain.c
+@@ -43,8 +43,11 @@
+ 
+ #include "af_frame.h"
+ #include "bpfilter.h"
++#include "flow.h"
+ #include "pflow.h"
+ 
++#include <net/if_flow.h>
++
+ #if NAF_FRAME > 0
+ extern const struct domain framedomain;
+ #endif
+@@ -229,6 +232,11 @@ net_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
+ 		return (pflow_sysctl(name + 1, namelen - 1, oldp, oldlenp,
+ 		    newp, newlen));
+ #endif /* NPFLOW > 0 */
++#if NFLOW > 0
++	if (family == PF_FLOW)
++		return (flow_sysctl(name + 1, namelen - 1, oldp, oldlenp,
++		    newp, newlen));
++#endif /* NFLOW > 0 */
+ #ifdef PIPEX
+ 	if (family == PF_PIPEX)
+ 		return (pipex_sysctl(name + 1, namelen - 1, oldp, oldlenp,
+diff --git a/sys/net/if_flow.c b/sys/net/if_flow.c
+index a03cc932..500066a3 100644
+--- a/sys/net/if_flow.c
++++ b/sys/net/if_flow.c
+@@ -45,6 +45,7 @@
+ #include <sys/task.h>
+ #include <sys/timeout.h>
+ #include <sys/kstat.h>
++#include <sys/sysctl.h>
+ 
+ #include <crypto/siphash.h>
+ 
+@@ -58,6 +59,12 @@
+ #include <net/if_flowvar.h>
+ 
+ #define FLOW_NBUCKETS		1024	/* power of two */
++#define FLOW_MAX_LIMIT		4096	/* net.flow.max upper bound */
++#define FLOW_IDLE_DEFAULT	30	/* seconds */
++#define FLOW_IDLE_LIMIT		3600
++#define FLOW_BUDGET_DEFAULT	64	/* WQEs per RX interrupt */
++#define FLOW_BUDGET_LIMIT	4096
++#define FLOW_YIELD_LIMIT	100000	/* microseconds */
+ 
+ /*
+  * Global counters, exported as kstat flow:0:stats.  Hit-path counters
+@@ -103,6 +110,7 @@ CTASSERT(flowc_gen_rt + FLOW_GEN_NSRC == flowc_gc_idle);
+ /*
+  *  Locks used to protect global data in this file:
+  *	I	immutable after flowattach()
++ *	C	flow_ctl_lock (sysctl setters only)
+  *	F	flow_mtx
+  *	R	flow_ring_mtx
+  *	a	atomic operations
+@@ -113,6 +121,16 @@ u_int			 flow_gen = 1;			/* [a] */
+ u_int			 flow_learn_gate;		/* [a] 0: learning cannot succeed */
+ u_int			 flow_sweep_ms;			/* [a] last complete GC sweep */
+ 
++/* net.flow knobs; budget and yield reach the hardware only via a transition */
++static u_int		 flow_mode_req = FLOW_MODE_OFF;	/* [C] requested */
++int			 flow_max = FLOW_MAX_LIMIT;	/* [C] mode 0 only */
++int			 flow_idle = FLOW_IDLE_DEFAULT;	/* [a] seconds */
++int			 flow_budget = FLOW_BUDGET_DEFAULT; /* [C] */
++int			 flow_yield;			/* [C] effective usec */
++int			 flow_debug;			/* [a] */
++
++/* lock order: flow_ctl_lock -> flow_mtx -> flow_ring_mtx */
++static struct rwlock	 flow_ctl_lock = RWLOCK_INITIALIZER("flowctl");
+ struct mutex		 flow_mtx = MUTEX_INITIALIZER(IPL_NET);
+ struct mutex		 flow_ring_mtx = MUTEX_INITIALIZER(IPL_NET);
+ 
+@@ -136,6 +154,10 @@ static const struct flow_md_ops *flow_md;		/* [I] once registered */
+ static void		 flow_learn_task(void *);
+ static void		 flow_gc_task(void *);
+ static void		 flow_gc_timeout(void *);
++static int		 flow_set_mode(int);
++static int		 flow_transition(u_int);
++static int		 flow_sysctl_sched(int, void *, size_t *, void *, size_t);
++static int		 flow_yield_round(int);
+ 
+ #if NKSTAT > 0
+ static void		 flow_kstat_attach(void);
+@@ -180,6 +202,190 @@ flow_md_register(const struct flow_md_ops *ops)
+ 	flow_md = ops;
+ }
+ 
++/*
++ * Invalidate every flow, learn request and dedup entry made before this
++ * point (DESIGN §5.4).  Any context.  Hook sites may run before
++ * flowattach() (interfaces attach first), so the counter is optional.
++ */
++void
++flow_gen_bump(enum flow_gen_src src)
++{
++	KASSERT(src < FLOW_GEN_NSRC);
++
++	membar_producer();
++	atomic_inc_int(&flow_gen);
++	if (flow_counters != NULL)
++		counters_inc(flow_counters, flowc_gen_rt + src);
++}
++
++/* net.flow.* (SPEC §6.1).  Process context, no locks held. */
++int
++flow_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
++    void *newp, size_t newlen)
++{
++	int error, val;
++
++	if (namelen != 1)
++		return (ENOTDIR);
++
++	switch (name[0]) {
++	case FLOWCTL_MODE:
++		val = atomic_load_int(&flow_mode);
++		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &val,
++		    FLOW_MODE_OFF, FLOW_MODE_SHADOW);
++		if (error != 0 || newp == NULL)
++			return (error);
++		return (flow_set_mode(val));
++	case FLOWCTL_MAX:
++		rw_enter_write(&flow_ctl_lock);
++		val = flow_max;
++		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &val,
++		    1, FLOW_MAX_LIMIT);
++		if (error == 0 && newp != NULL && val != flow_max) {
++			if (flow_mode_req != FLOW_MODE_OFF)
++				error = EBUSY;
++			else
++				flow_max = val;
++		}
++		rw_exit_write(&flow_ctl_lock);
++		return (error);
++	case FLOWCTL_IDLE:
++		return (sysctl_int_bounded(oldp, oldlenp, newp, newlen,
++		    &flow_idle, 1, FLOW_IDLE_LIMIT));
++	case FLOWCTL_BUDGET:
++	case FLOWCTL_YIELD:
++		return (flow_sysctl_sched(name[0], oldp, oldlenp, newp,
++		    newlen));
++	case FLOWCTL_DEBUG:
++		return (sysctl_int_bounded(oldp, oldlenp, newp, newlen,
++		    &flow_debug, 0, 1));
++	default:
++		return (EOPNOTSUPP);
++	}
++	/* NOTREACHED */
++}
++
++/*
++ * budget and yield are stored while off; in an active mode the new
++ * values reach the hardware only through the transition protocol, never
++ * by writing live registers directly (DESIGN §5.7).
++ */
++static int
++flow_sysctl_sched(int knob, void *oldp, size_t *oldlenp, void *newp,
++    size_t newlen)
++{
++	int error, val;
++
++	rw_enter_write(&flow_ctl_lock);
++	if (knob == FLOWCTL_BUDGET) {
++		val = flow_budget;
++		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &val,
++		    0, FLOW_BUDGET_LIMIT);
++	} else {
++		val = flow_yield;
++		error = sysctl_int_bounded(oldp, oldlenp, newp, newlen, &val,
++		    0, FLOW_YIELD_LIMIT);
++		val = flow_yield_round(val);
++	}
++	if (error != 0 || newp == NULL)
++		goto out;
++	if (val == (knob == FLOWCTL_BUDGET ? flow_budget : flow_yield))
++		goto out;		/* unchanged: keep the table */
++
++	if (knob == FLOWCTL_BUDGET)
++		flow_budget = val;
++	else
++		flow_yield = val;
++	if (flow_mode_req != FLOW_MODE_OFF)
++		error = flow_transition(flow_mode_req);
++out:
++	rw_exit_write(&flow_ctl_lock);
++	return (error);
++}
++
++static int
++flow_yield_round(int usec)
++{
++	if (flow_md != NULL && flow_md->fmo_yield_round != NULL)
++		return (flow_md->fmo_yield_round(usec));
++	return (usec);
++}
++
++static int
++flow_set_mode(int mode)
++{
++	int error = 0;
++
++	/* refuse unbuilt modes before anything changes */
++	if (mode == FLOW_MODE_ZEROCOPY)
++		return (EOPNOTSUPP);
++
++	rw_enter_write(&flow_ctl_lock);
++	if ((u_int)mode != flow_mode_req)
++		error = flow_transition(mode);
++	rw_exit_write(&flow_ctl_lock);
++
++	return (error);
++}
++
++/*
++ * Mode transition, DESIGN §5.7.  The caller holds flow_ctl_lock and no
++ * other lock: this waits for the GC timer, the RX handlers, SMR readers
++ * and the worker.  Every transition passes through "everything closed",
++ * so a stale request, task or timer cannot cross it.
++ */
++static int
++flow_transition(u_int mode)
++{
++	rw_assert_wrlock(&flow_ctl_lock);
++
++	/* 1. close commits, GC and requests; then invalidate everything */
++	mtx_enter(&flow_mtx);
++	flow_commit_enabled = 0;
++	flow_gc_enabled = 0;
++	atomic_store_int(&flow_mode, FLOW_MODE_OFF);
++	mtx_enter(&flow_ring_mtx);
++	flow_accepting = 0;
++	flow_gen_bump(FLOW_GEN_SYSCTL);
++	mtx_leave(&flow_ring_mtx);
++	mtx_leave(&flow_mtx);
++
++	/* 2. the timer cannot rearm: its gate is closed under flow_mtx */
++	timeout_del_barrier(&flow_gc_tmo);
++
++	/* 3. RX handlers, then SMR readers including HOOK B producers */
++	if (flow_md != NULL)
++		flow_md->fmo_rx_barrier();
++	smr_barrier();
++
++	/* 4. neither task reschedules itself; producers and timer are shut */
++	taskq_del_barrier(flow_tq, &flow_learn_t);
++	taskq_del_barrier(flow_tq, &flow_gc_t);
++
++	/* 5. empty the table and the learn ring */
++
++	/* 6. stock RX scheduling for mode 0, bounded for modes 1-3 */
++	if (flow_md != NULL)
++		flow_md->fmo_sched_set(mode, flow_budget, flow_yield);
++
++	/* 7. reopen */
++	if (mode != FLOW_MODE_OFF) {
++		mtx_enter(&flow_mtx);
++		mtx_enter(&flow_ring_mtx);
++		flow_accepting = 1;
++		mtx_leave(&flow_ring_mtx);
++		flow_commit_enabled = 1;
++		flow_gc_enabled = 1;
++		membar_producer();
++		atomic_store_int(&flow_mode, mode);
++		timeout_add_sec(&flow_gc_tmo, 1);
++		mtx_leave(&flow_mtx);
++	}
++	flow_mode_req = mode;
++
++	return (0);
++}
++
+ /* Commit queued learn requests (DESIGN §5.3). */
+ static void
+ flow_learn_task(void *arg)
+diff --git a/sys/net/if_flow.h b/sys/net/if_flow.h
+index 0734d979..25a79a23 100644
+--- a/sys/net/if_flow.h
++++ b/sys/net/if_flow.h
+@@ -32,6 +32,27 @@
+  * <net/if_flowvar.h>.
+  */
+ 
++/*
++ * net.flow sysctl names.
++ */
++#define FLOWCTL_MODE		1	/* 0 off, 1 mbuf, 2 zero-copy, 3 shadow */
++#define FLOWCTL_MAX		2	/* table limit; changes in mode 0 only */
++#define FLOWCTL_IDLE		3	/* seconds without a hit before GC */
++#define FLOWCTL_BUDGET		4	/* RX work per interrupt, modes 1-3 */
++#define FLOWCTL_YIELD		5	/* RX hold-off after the budget, usec */
++#define FLOWCTL_DEBUG		6	/* log refusals and invalidations */
++#define FLOWCTL_MAXID		7
++
++#define FLOWCTL_NAMES { \
++	{ 0, 0 }, \
++	{ "mode", CTLTYPE_INT }, \
++	{ "max", CTLTYPE_INT }, \
++	{ "idle", CTLTYPE_INT }, \
++	{ "budget", CTLTYPE_INT }, \
++	{ "yield", CTLTYPE_INT }, \
++	{ "debug", CTLTYPE_INT }, \
++}
++
+ #ifdef _KERNEL
+ 
+ #ifndef NFLOW
+diff --git a/sys/net/if_flowvar.h b/sys/net/if_flowvar.h
+index 1f27ab66..2b90bbf3 100644
+--- a/sys/net/if_flowvar.h
++++ b/sys/net/if_flowvar.h
+@@ -110,6 +110,12 @@ struct flow_md_ops {
+ 	 * context, no spinlock held.
+ 	 */
+ 	void	 (*fmo_sched_set)(u_int, u_int, u_int);
++	/*
++	 * effective hold-off for a requested net.flow.yield: the
++	 * mechanism's granularity, rounded up.  No side effects; any
++	 * context (ERRATA E81).
++	 */
++	u_int	 (*fmo_yield_round)(u_int);
+ };
+ 
+ extern u_int	flow_mode;			/* [a] FLOW_MODE_* */
+diff --git a/sys/sys/socket.h b/sys/sys/socket.h
+index 79e9cd18..9faf628a 100644
+--- a/sys/sys/socket.h
++++ b/sys/sys/socket.h
+@@ -205,7 +205,8 @@ struct	splice {
+ #define pseudo_AF_PFLOW 34		/* pflow */
+ #define pseudo_AF_PIPEX 35		/* PIPEX */
+ #define AF_FRAME        36		/* frame (Ethernet) sockets */
+-#define AF_MAX          37
++#define pseudo_AF_FLOW  37		/* IPv4 forwarding cache (net.flow) */
++#define AF_MAX          38
+ 
+ /*
+  * Structure used by kernel to store most
+@@ -290,6 +291,7 @@ struct sockproto {
+ #define PF_PFLOW	pseudo_AF_PFLOW
+ #define PF_PIPEX	pseudo_AF_PIPEX
+ #define PF_FRAME	AF_FRAME
++#define PF_FLOW		pseudo_AF_FLOW
+ #define	PF_MAX		AF_MAX
+ 
+ /*
+@@ -356,6 +358,8 @@ struct sockpeercred {
+ 	{ "mpls", CTLTYPE_NODE }, \
+ 	{ "pflow", CTLTYPE_NODE }, \
+ 	{ "pipex", CTLTYPE_NODE }, \
++	{ 0, 0 }, \
++	{ "flow", CTLTYPE_NODE }, \
+ }
+ 
+ /*

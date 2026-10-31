@@ -556,6 +556,13 @@
      "body": "Starting T1.0 (code at the desk; Done-when needs the build host {{C2}}).\n\nPlan: in `src/` on branch `usg2bsd`, one fork commit for this task:\n- `sys/conf/files`: `pseudo-device flow` and `file net/if_flow.c flow needs-flag`; `sys/arch/octeon/conf/files.octeon`: `file arch/octeon/dev/if_cnmac_flow.c flow & cnmac`; MI `sys/conf/GENERIC`: `pseudo-device flow`.\n- `sys/net/if_flow.h`: the DESIGN §3.1 hook API under `#if NFLOW > 0` with empty inline stubs otherwise, under `#ifdef _KERNEL` (the FLOWCTL names arrive with {{T1.1}}).\n- `sys/net/if_flow.c`: `flowattach()` setting up pool, buckets, SipHash key, counters, the `flow:0:stats` kstat, gate state, the GC timeout and the single-worker `flow_tq`.\n- `sys/arch/octeon/dev/if_cnmac_flow.c`: placeholder so the octeon config links; the MD glue is {{T2.1}}.\n\nVerification available here: `tools/kcheck.py` (clang `-fsyntax-only`, amd64 flags, `-Werror`) for the new MI files with and without `pseudo-device flow`. It cannot check octeon (no MIPS backend in Apple clang) or link anything.\n\nFound while planning: DESIGN §4 puts `struct flow`/`flow_key` (and §3.1 the MD ops) in `if_flow.h`, which every hook site includes. Filed as {{F1}}; handled by moving them to `if_flowvar.h` with ERRATA E80, before the code.",
      "queued": true,
      "posted": false
+    },
+    {
+     "at": "2026-10-31 09:51 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Implemented at the desk: fork commit `daa3e47c`, exported as `patches/0001-T1.0-build-integration-for-pseudo-device-flow.patch` (repo commit `7b4ad57`).\n\nWhat changed in the fork:\n- `sys/conf/files`: `pseudo-device flow` + `file net/if_flow.c flow needs-flag`; `sys/conf/GENERIC`: `pseudo-device flow`; `sys/arch/octeon/conf/files.octeon`: `file arch/octeon/dev/if_cnmac_flow.c flow & cnmac`.\n- `sys/net/if_flow.h`: the DESIGN §3.1 hook API (`flow_gen_bump`, `flow_gate_update`, `flow_fwd_mark`, `flow_fwd_clear`, `flow_learn_request`, `flow_sysctl`, `flowattach`) under `#ifdef _KERNEL`, real prototypes for `NFLOW > 0` and empty `static inline` stubs otherwise (`flow_sysctl` stub returns EOPNOTSUPP). It `#error`s if `\"flow.h\"` was not included first, so a hook site cannot silently compile to stubs in a flow kernel.\n- `sys/net/if_flowvar.h` (ERRATA E80, {{F1}}): `struct flow_key`, `struct flow` with `f_ctr[FLOW_NCPU]` lines, `FLOW_MODE_*`, `struct flow_md_ops`, `flow_md_register()`.\n- `sys/net/if_flow.c`: `flowattach()` initialises the pool (`CACHELINESIZE`-aligned, IPL_NET), the 1024 SMR buckets, the SipHash key, `counters_alloc()` for the 28 global counters, kstat `flow:0:stats` (28 counters + `arp_sweep_ms`), closed gates (`commit_enabled`, `gc_enabled`, `accepting`, `flow_learn_gate` = 0), an MPSAFE GC timeout and the single-worker MPSAFE IPL_NET `flow_tq`. Learn/GC handlers are empty until {{T1.6}}/{{T1.7}}.\n\nVerification run here (macOS; the Done-when itself is still open):\n1. **OpenBSD config(8)** from the pinned tree, built on the Mac (`tools/kconfig.sh`): amd64 and octeon GENERIC.MP configure with flow — `flow.h` = `#define NFLOW 1`, `{ flowattach, 1 }` in `ioconf.c`, `net/if_flow.c` (plus `arch/octeon/dev/if_cnmac_flow.c` on octeon) in the Makefile. With `pseudo-device flow` removed from a copy of the MI GENERIC: `NFLOW 0`, no flow sources, no `flowattach` (the only matches are `pflowattach`).\n2. **clang -fsyntax-only, amd64 kernel flags, -Werror** (`tools/kcheck.py`): `if_flow.c` and `if_cnmac_flow.c` ok. A hook-site test unit calling all six hooks: ok with and without flow. The same unit without `#include \"flow.h\"`: fails with the intended `#error`. First attempt failed `-Wunused-variable` on `flow_tbl`/`flow_count` — fixed by the explicit bucket initialisation T1.0 asks for.\n3. **Generated code** (`kcheck.py --asm`, -O2 amd64): the hook-site function contains no call at all without flow, and the five `flow_*` calls with it — the hooks compile to nothing.\n4. **Patch round trip**: `patches/*.patch` applied to `fork-base` reproduces the fork tree exactly (tree `25ad0cde9f46`).\n\nNot verified (needs {{C2}}): compiling and linking amd64 and octeon GENERIC.MP with and without flow, octeon compilation of any file (Apple clang has no MIPS backend), boot. Done-when stays open.",
+     "queued": true,
+     "posted": false
     }
    ],
    "number": null
@@ -576,7 +583,15 @@
    "state": "open",
    "state_reason": null,
    "pin": false,
-   "comments": [],
+   "comments": [
+    {
+     "at": "2026-10-31 09:53 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Starting T1.1 at the desk (Done-when needs {{C2}}).\n\nPlan, one fork commit:\n- `sys/sys/socket.h`: `pseudo_AF_FLOW 37`, `AF_MAX 38`, `PF_FLOW`; `CTL_NET_NAMES` gets `{ 0, 0 }` for AF_FRAME (36) and `{ \"flow\", CTLTYPE_NODE }` (37).\n- `sys/net/if_flow.h`: `FLOWCTL_*` and `FLOWCTL_NAMES` outside `_KERNEL`.\n- `sys/kern/uipc_domain.c`: `PF_FLOW` branch in `net_sysctl()` inside `#ifndef SMALL_KERNEL`, under `#if NFLOW > 0`, like `PF_PFLOW`/`PF_PIPEX`.\n- `sys/net/if_flow.c`: `flow_sysctl()` with `sysctl_int_bounded()`; `mode` through a setter serialised by `flow_ctl_lock` that runs the DESIGN §5.7 transition (steps whose objects exist now; table flush and ring clear join with {{T1.2}} and {{T1.6}}, the full race tests are {{T1.8}}); `max` only in mode 0 (EBUSY); mode 2 EOPNOTSUPP before anything changes; budget/yield changes in an active mode re-run the transition, in mode 0 they are only stored; `yield` stored rounded.\n- `sbin/sysctl/sysctl.c`: `flowname`/`flowlist`, `PF_FLOW` case and `sysctl_flow()` (pattern of bpf/pipex).\n\nTwo interface gaps found and handled first as {{F2}}: no MD op can report the rounded yield (new pure `fmo_yield_round()`, ERRATA E81, DESIGN §3.1), and SPEC §6.1 had no bounds for idle/budget/yield (ERRATA E82, SPEC §6.1 now 1–3600 s, 0–4096, 0–100000 µs).\n\nSide observation: at the fork point sysctl(8) declares `netname[] = CTL_NET_NAMES` with 36 entries but bounds the list by `NET_MAXID` = `AF_MAX` = 37 (`sbin/sysctl/sysctl.c:113,149`), so lookups read one element past the array. The placeholder this task adds makes it 38 entries for `AF_MAX` 38.",
+     "queued": true,
+     "posted": false
+    }
+   ],
    "number": null
   },
   {
@@ -1447,6 +1462,32 @@
     "env:desk"
    ],
    "body": "**Finding (low), found while starting {{T1.0}}.**\n\nDESIGN §4 shows `struct flow_key`, `struct flow` and the priority/PCP constants under a `/* sys/net/if_flow.h */` banner, and DESIGN §3.1 lists `struct flow_md_ops` in the same header. But `if_flow.h` is also the hook API that every hook-site file includes (DESIGN §3, about twenty files: `route.c`, `rtsock.c`, `if.c`, `if_ethersubr.c`, `if_ether.c`, `ip_input.c`, `bpf.c`, `pf_ioctl.c`, …). With `pseudo-device flow` configured, each of them would then have to compile those structures, which need:\n\n- `CACHELINESIZE`, defined on amd64 only by `sys/sys/percpu.h:22-23` (octeon gets 128 from `sys/arch/octeon/include/cpu.h:77` via `<sys/param.h>` → `machine/param.h` → `mips64/param.h:41`);\n- `SMR_LIST_ENTRY` and `struct smr_entry` (`<sys/smr.h>`);\n- `struct in_addr` (`<netinet/in.h>`) and `ETHER_ADDR_LEN` (`<netinet/if_ether.h>`).\n\nEither every hook site grows four includes it does not otherwise use, or a missing include breaks the build only when flow is configured.\n\n**Resolution:** keep `if_flow.h` to the sysctl names and the hook API (enum, hooks, `flow_sysctl`, `flowattach`, NFLOW stubs). Put the data structures, the MD operations and the internal MI/MD prototypes in a new `sys/net/if_flowvar.h`, included only by `if_flow.c`, `if_cnmac_flow.c` and ddb (the `if_vlan_var.h` / `if_cnmacvar.h` pattern). Content is unchanged. ERRATA E80; DESIGN §3 (components), §3.1 and §4 banners updated.\n\nVerification: {{T1.0}} (hook sites compile with and without `pseudo-device flow`).\n",
+   "parent": "E-P1",
+   "blocked_by": [],
+   "state": "closed",
+   "state_reason": "completed",
+   "pin": false,
+   "comments": [
+    {
+     "at": "2026-10-31 09:51 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Resolved in documentation and code (repo commit `7b4ad57`): ERRATA §8 E80 added; DESIGN §3 components row, the §3.1 MD-ops banner and the §4 banner now name `sys/net/if_flowvar.h`. Fork commit `daa3e47c` ({{T1.0}}) follows it: `if_flow.h` holds only the hook API, `if_flowvar.h` the structures and MD ops. A hook-site test unit that includes only `flow.h` and `<net/if_flow.h>` compiles with and without flow (`tools/kcheck.py`). The real-build confirmation is part of {{T1.0}}'s Done-when. Closing.",
+     "queued": true,
+     "posted": false
+    }
+   ],
+   "number": null,
+   "state_synced": false
+  },
+  {
+   "key": "F2",
+   "title": "Finding: T1.1 needs a yield-rounding MD op and bounds for idle/budget/yield",
+   "labels": [
+    "finding",
+    "phase-1",
+    "env:desk"
+   ],
+   "body": "**Finding (low), found while starting {{T1.1}}.** Two gaps between T1.1's Done-when and the interface documents.\n\n1. **No way to learn the effective yield.** T1.1 requires: \"Reading `yield` returns the effective value after rounding to the mechanism's granularity\", and SPEC §6.1 says the same. The only MD scheduling operation in DESIGN §3.1 is `void (*fmo_sched_set)(u_int mode, u_int budget, u_int yield_us)`: it applies settings (and only during an active transition), and returns nothing. The MI sysctl code therefore cannot know the rounded value, least of all in mode 0, where nothing is applied.\n2. **No bounds for three knobs.** T1.1 requires \"bounds are enforced\", but SPEC §6.1 gives values only for `mode` (0–3), `max` (1–4096) and `debug` (0/1). `idle` (\"seconds\"), `budget` (\"WQEs per interrupt\", 0 = unbounded) and `yield` (\"microseconds\") have none.\n\n**Resolution.**\n\n1. Add a pure MD operation `u_int (*fmo_yield_round)(u_int yield_us)` that returns the effective hold-off for a requested value (the mechanism's granularity, rounded up; no side effects). The setter stores the rounded value, so a read returns it in every mode. With no MD registered (amd64) the value is stored as given. DESIGN §3.1; ERRATA E81.\n2. Bounds: `idle` 1–3600 s; `budget` 0–4096 (above the 768-buffer pool already means unbounded, and mode 2 may recycle buffers faster); `yield` 0–100000 µs (anything near 10 ms already overflows the PKT pool at 64-byte line rate, DESIGN §5.6). Default `yield` stays 0 until T0.9 sets it. SPEC §6.1; ERRATA E82.\n\nVerification: {{T1.1}}.\n",
    "parent": "E-P1",
    "blocked_by": [],
    "state": "open",
