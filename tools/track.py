@@ -17,6 +17,8 @@ Usage:
                                              queue a timestamped checkpoint
                                              (text from stdin without -m/-F)
   tools/track.py state KEY open|closed [--reason completed|not_planned]
+  tools/track.py new KEY --title T --labels a,b [--parent P] [--blocked-by X,Y]
+                     [-m TEXT | -F FILE]  stage a new issue (e.g. a finding)
   tools/track.py publish [--dry-run]         create everything on GitHub
 
 Body placeholders, resolved when shown or published:
@@ -290,6 +292,18 @@ def cmd_comment(db, key, text, author):
     print(f"queued comment on {key} at {c['at']}")
 
 
+def cmd_new(db, key, title, labels, parent, blocked_by, body):
+    if key in by_key(db):
+        die(f"key {key} exists")
+    issue = {"key": key, "title": title, "labels": labels, "body": body.strip() + "\n",
+             "parent": parent, "blocked_by": blocked_by, "state": "open", "state_reason": None,
+             "pin": False, "comments": [], "number": None}
+    db["issues"].append(issue)
+    cmd_check(db, quiet=True)
+    save(db)
+    print(f"staged {key}: {title}")
+
+
 def cmd_state(db, key, state, reason):
     i = get_issue(db, key)
     i["state"] = state
@@ -460,6 +474,14 @@ def main():
     p.add_argument("key")
     p.add_argument("state", choices=["open", "closed"])
     p.add_argument("--reason", choices=["completed", "not_planned"])
+    p = sp.add_parser("new")
+    p.add_argument("key")
+    p.add_argument("--title", required=True)
+    p.add_argument("--labels", default="")
+    p.add_argument("--parent")
+    p.add_argument("--blocked-by", default="")
+    p.add_argument("-m", "--message")
+    p.add_argument("-F", "--file")
     p = sp.add_parser("publish")
     p.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -478,6 +500,10 @@ def main():
         else:
             text = sys.stdin.read()
         cmd_comment(db, a.key, text, a.author)
+    elif a.cmd == "new":
+        body = a.message if a.message is not None else Path(a.file).read_text(encoding="utf-8")
+        cmd_new(db, a.key, a.title, [l for l in a.labels.split(",") if l], a.parent,
+                [b for b in a.blocked_by.split(",") if b], body)
     elif a.cmd == "state":
         cmd_state(db, a.key, a.state, a.reason)
     elif a.cmd == "publish":

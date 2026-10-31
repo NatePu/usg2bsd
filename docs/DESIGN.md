@@ -75,7 +75,7 @@ NOTES.md; items marked *(probe T0.x)* need the box.
 
 | File | Kind | Content |
 |---|---|---|
-| `sys/net/if_flow.c`, `if_flow.h` (new) | MI, compiles on amd64 | Flow table (SMR hash), learn ring + task, commit checks, generation, GC + ARP refresh, sysctl, kstat, ddb. Knows ports only through an opaque `void *` egress handle and an ops vector. |
+| `sys/net/if_flow.c`, `if_flow.h`, `if_flowvar.h` (new) | MI, compiles on amd64 | Flow table (SMR hash), learn ring + task, commit checks, generation, GC + ARP refresh, sysctl, kstat, ddb. Knows ports only through an opaque `void *` egress handle and an ops vector. `if_flow.h` holds only the sysctl names and the hook API, because every hook site includes it; the data structures, MD ops and internal prototypes are in `if_flowvar.h`, included by `if_flow.c`, `if_cnmac_flow.c` and ddb (ERRATA E80). |
 | `sys/arch/octeon/dev/if_cnmac_flow.c` (new) | MD | HOOK A `cnmac_flow_input()`, per-egress hit batches and flush, HOOK B call, `cnmac_flow_port(ifp)` (ifp → port or −1), budget/yield. |
 | `sys/arch/octeon/dev/if_cnmac.c`, `if_cnmacvar.h` | MD | Call sites for HOOK A/B, loop budget, `if_counters_alloc()` in attach, `crg_hit[]` lists in `struct cnmac_rx_group`. |
 | `sys/netinet/ip_input.c`, `ip_output.c` | MI | Set / clear the forwarded mark. Gen bumps for forwarding/multipath/redirect sysctls. |
@@ -119,7 +119,8 @@ void	flowattach(int);		/* pseudo-device attach */
 /* With NFLOW == 0 every function above except flowattach is an empty
  * static inline, so hook sites compile to nothing. */
 
-/* MD operations, registered once by if_cnmac_flow.c; test stubs on amd64 */
+/* sys/net/if_flowvar.h (ERRATA E80): MD operations, registered once by
+ * if_cnmac_flow.c; test stubs on amd64 */
 struct flow_md_ops {
 	int	(*fmo_port)(struct ifnet *);	/* physical port or -1;
 						   shared netlock */
@@ -178,7 +179,7 @@ int	arp_flow_refresh(u_int rtableid, u_int ifidx, struct in_addr nexthop);
 ## 4. Data structures
 
 ```c
-/* sys/net/if_flow.h */
+/* sys/net/if_flowvar.h (ERRATA E80) */
 struct flow_key {                      /* 12 bytes, memset(0) before fill */
 	u_int16_t	fk_port;       /* ingress port number (cnmac 0..2) */
 	u_int16_t	fk_vid;        /* FK_TAGGED | VID (12 bits); 0 = untagged */

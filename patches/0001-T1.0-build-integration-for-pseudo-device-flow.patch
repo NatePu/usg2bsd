@@ -1,0 +1,651 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NP <50584693+NatePu@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 09:50:22 -0400
+Subject: [PATCH] T1.0: build integration for pseudo-device flow
+
+- sys/conf/files: pseudo-device flow, file net/if_flow.c (needs-flag).
+- sys/conf/GENERIC: pseudo-device flow (amd64 and octeon include it).
+- arch/octeon/conf/files.octeon: if_cnmac_flow.c for "flow & cnmac".
+- net/if_flow.h: hook API of DESIGN 3.1; empty inline stubs when
+  NFLOW == 0; refuses to compile without "flow.h".
+- net/if_flowvar.h: flow key, struct flow, MD ops (ERRATA E80).
+- net/if_flow.c: flowattach() sets up the pool, buckets, SipHash key,
+  counters, kstat flow:0:stats, closed gates, the GC timeout and the
+  single-worker flow_tq.
+- arch/octeon/dev/if_cnmac_flow.c: placeholder for the MD glue.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ sys/arch/octeon/conf/files.octeon   |   1 +
+ sys/arch/octeon/dev/if_cnmac_flow.c |  31 +++
+ sys/conf/GENERIC                    |   2 +
+ sys/conf/files                      |   3 +
+ sys/net/if_flow.c                   | 281 ++++++++++++++++++++++++++++
+ sys/net/if_flow.h                   | 125 +++++++++++++
+ sys/net/if_flowvar.h                | 122 ++++++++++++
+ 7 files changed, 565 insertions(+)
+ create mode 100644 sys/arch/octeon/dev/if_cnmac_flow.c
+ create mode 100644 sys/net/if_flow.c
+ create mode 100644 sys/net/if_flow.h
+ create mode 100644 sys/net/if_flowvar.h
+
+diff --git a/sys/arch/octeon/conf/files.octeon b/sys/arch/octeon/conf/files.octeon
+index 4efff4eb..148ec58e 100644
+--- a/sys/arch/octeon/conf/files.octeon
++++ b/sys/arch/octeon/conf/files.octeon
+@@ -122,6 +122,7 @@ file	arch/octeon/dev/cn30xxgmx.c			octgmx
+ device	cnmac: ether, ifnet, mii, ifmedia
+ attach	cnmac at octgmx
+ file	arch/octeon/dev/if_cnmac.c			cnmac
++file	arch/octeon/dev/if_cnmac_flow.c			flow & cnmac
+ 
+ attach	com at fdt_octeon with octuart
+ file	arch/octeon/dev/cn30xxuart.c			octuart
+diff --git a/sys/arch/octeon/dev/if_cnmac_flow.c b/sys/arch/octeon/dev/if_cnmac_flow.c
+new file mode 100644
+index 00000000..d71fe320
+--- /dev/null
++++ b/sys/arch/octeon/dev/if_cnmac_flow.c
+@@ -0,0 +1,31 @@
++/*	$OpenBSD$	*/
++
++/*
++ * Copyright (c) 2026 The usg2bsd authors
++ *
++ * Permission to use, copy, modify, and distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
++ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++/*
++ * cnmac(4) side of the flow cache: the receive hook (HOOK A), per-egress
++ * hit batches, the RX budget and yield, and the MD operations registered
++ * with the MI code.  Kernels with both "pseudo-device flow" and cnmac
++ * compile this file; it is filled in by the MD glue.
++ */
++
++#include "flow.h"
++
++#include <sys/param.h>
++#include <sys/systm.h>
++
++#include <net/if_flow.h>
+diff --git a/sys/conf/GENERIC b/sys/conf/GENERIC
+index f9f61591..570c9b0f 100644
+--- a/sys/conf/GENERIC
++++ b/sys/conf/GENERIC
+@@ -117,4 +117,6 @@ pseudo-device	fuse		# fuse device
+ 
+ pseudo-device	af_frame	# (Ethernet) frame sockets
+ 
++pseudo-device	flow		# IPv4 forwarding cache (cnmac fast path)
++
+ option		BOOT_CONFIG	# add support for boot -c
+diff --git a/sys/conf/files b/sys/conf/files
+index 389e63cf..ed4c2d20 100644
+--- a/sys/conf/files
++++ b/sys/conf/files
+@@ -617,6 +617,9 @@ pseudo-device wg: ifnet
+ pseudo-device af_frame
+ file	net/af_frame.c			af_frame needs-flag
+ 
++pseudo-device flow
++file	net/if_flow.c			flow needs-flag
++
+ pseudo-device ksyms
+ file	dev/ksyms.c			ksyms needs-flag
+ 
+diff --git a/sys/net/if_flow.c b/sys/net/if_flow.c
+new file mode 100644
+index 00000000..a03cc932
+--- /dev/null
++++ b/sys/net/if_flow.c
+@@ -0,0 +1,281 @@
++/*	$OpenBSD$	*/
++
++/*
++ * Copyright (c) 2026 The usg2bsd authors
++ *
++ * Permission to use, copy, modify, and distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
++ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++/*
++ * IPv4 forwarding cache for the cnmac(4) fast path ("mode R").
++ *
++ * Flows are learned from packets that ip_forward() really forwarded: the
++ * driver's start routine queues a request for a marked packet (HOOK B), and
++ * a task re-resolves the route and ARP entry in process context before it
++ * commits the flow.  The MD receive path (HOOK A) looks flows up under SMR
++ * without a writer lock.  A global generation number, bumped by every
++ * relevant routing, neighbour, interface and policy change, invalidates
++ * flows at admission.  A periodic task reaps idle and stale flows and keeps
++ * the ARP entries of active next hops fresh.
++ */
++
++#include "flow.h"
++#include "kstat.h"
++
++#include <sys/param.h>
++#include <sys/systm.h>
++#include <sys/mbuf.h>
++#include <sys/socket.h>
++#include <sys/pool.h>
++#include <sys/mutex.h>
++#include <sys/rwlock.h>
++#include <sys/atomic.h>
++#include <sys/smr.h>
++#include <sys/percpu.h>
++#include <sys/task.h>
++#include <sys/timeout.h>
++#include <sys/kstat.h>
++
++#include <crypto/siphash.h>
++
++#include <net/if.h>
++#include <net/if_var.h>
++
++#include <netinet/in.h>
++#include <netinet/if_ether.h>
++
++#include <net/if_flow.h>
++#include <net/if_flowvar.h>
++
++#define FLOW_NBUCKETS		1024	/* power of two */
++
++/*
++ * Global counters, exported as kstat flow:0:stats.  Hit-path counters
++ * (hit, miss, stale, sl_*, txq_drop, yield) belong to the MD fast path.
++ */
++enum flow_counter {
++	flowc_lrn_req,
++	flowc_lrn_dup,
++	flowc_lrn_qfull,
++	flowc_lrn_ok,
++	flowc_ref_route,
++	flowc_ref_arp,
++	flowc_ref_stale,
++	flowc_ref_pf,
++	flowc_ref_ipsec,
++	flowc_ref_bpf,
++	flowc_ref_fwd,
++	flowc_ref_down,
++	flowc_ref_mode,
++	flowc_ref_nomem,
++	flowc_ref_hairpin,
++	flowc_ref_iface,
++	flowc_ref_full,
++	flowc_gen_rt,			/* one per enum flow_gen_src */
++	flowc_gen_arp,
++	flowc_gen_if,
++	flowc_gen_vlan,
++	flowc_gen_bpf,
++	flowc_gen_sysctl,
++	flowc_gen_pf,
++	flowc_gen_ipsec,
++	flowc_gc_idle,
++	flowc_gc_stale,
++	flowc_gc_arp,
++	flowc_arp_refresh,
++
++	flowc_ncounters
++};
++
++CTASSERT(flowc_gen_rt + FLOW_GEN_IPSEC == flowc_gen_ipsec);
++CTASSERT(flowc_gen_rt + FLOW_GEN_NSRC == flowc_gc_idle);
++
++/*
++ *  Locks used to protect global data in this file:
++ *	I	immutable after flowattach()
++ *	F	flow_mtx
++ *	R	flow_ring_mtx
++ *	a	atomic operations
++ */
++
++u_int			 flow_mode = FLOW_MODE_OFF;	/* [a] */
++u_int			 flow_gen = 1;			/* [a] */
++u_int			 flow_learn_gate;		/* [a] 0: learning cannot succeed */
++u_int			 flow_sweep_ms;			/* [a] last complete GC sweep */
++
++struct mutex		 flow_mtx = MUTEX_INITIALIZER(IPL_NET);
++struct mutex		 flow_ring_mtx = MUTEX_INITIALIZER(IPL_NET);
++
++static int		 flow_commit_enabled;		/* [F] */
++static int		 flow_gc_enabled;		/* [F] */
++static int		 flow_accepting;		/* [R] */
++
++SMR_LIST_HEAD(flow_bucket, flow);
++static struct flow_bucket flow_tbl[FLOW_NBUCKETS];	/* [F] SMR readers */
++static u_int		 flow_count;			/* [F] linked flows */
++
++static SIPHASH_KEY	 flow_hashkey;			/* [I] */
++static struct pool	 flow_pool;			/* [I] */
++static struct cpumem	*flow_counters;			/* [I] */
++static struct taskq	*flow_tq;			/* [I] */
++static struct task	 flow_learn_t;			/* [I] */
++static struct task	 flow_gc_t;			/* [I] */
++static struct timeout	 flow_gc_tmo;			/* [I] */
++static const struct flow_md_ops *flow_md;		/* [I] once registered */
++
++static void		 flow_learn_task(void *);
++static void		 flow_gc_task(void *);
++static void		 flow_gc_timeout(void *);
++
++#if NKSTAT > 0
++static void		 flow_kstat_attach(void);
++#endif
++
++void
++flowattach(int count)
++{
++	u_int i;
++
++	pool_init(&flow_pool, sizeof(struct flow), CACHELINESIZE, IPL_NET, 0,
++	    "flowpl", NULL);
++	for (i = 0; i < nitems(flow_tbl); i++)
++		SMR_LIST_INIT(&flow_tbl[i]);
++	flow_count = 0;
++	arc4random_buf(&flow_hashkey, sizeof(flow_hashkey));
++	flow_counters = counters_alloc(flowc_ncounters);
++
++	/* Every gate starts closed: mode 0 until net.flow.mode is set. */
++	flow_commit_enabled = 0;
++	flow_gc_enabled = 0;
++	flow_accepting = 0;
++	atomic_store_int(&flow_learn_gate, 0);
++
++	timeout_set_flags(&flow_gc_tmo, flow_gc_timeout, NULL, KCLOCK_NONE,
++	    TIMEOUT_MPSAFE);
++	task_set(&flow_learn_t, flow_learn_task, NULL);
++	task_set(&flow_gc_t, flow_gc_task, NULL);
++	flow_tq = taskq_create("flow", 1, IPL_NET, TASKQ_MPSAFE);
++	if (flow_tq == NULL)
++		panic("%s: unable to create the flow taskq", __func__);
++
++#if NKSTAT > 0
++	flow_kstat_attach();
++#endif
++}
++
++void
++flow_md_register(const struct flow_md_ops *ops)
++{
++	KASSERT(flow_md == NULL);
++	flow_md = ops;
++}
++
++/* Commit queued learn requests (DESIGN §5.3). */
++static void
++flow_learn_task(void *arg)
++{
++}
++
++/* Reap idle and stale flows, refresh active next hops (DESIGN §5.5). */
++static void
++flow_gc_task(void *arg)
++{
++}
++
++static void
++flow_gc_timeout(void *arg)
++{
++}
++
++#if NKSTAT > 0
++static const char *const flow_counter_names[flowc_ncounters] = {
++	[flowc_lrn_req] =	"lrn_req",
++	[flowc_lrn_dup] =	"lrn_dup",
++	[flowc_lrn_qfull] =	"lrn_qfull",
++	[flowc_lrn_ok] =	"lrn_ok",
++	[flowc_ref_route] =	"ref_route",
++	[flowc_ref_arp] =	"ref_arp",
++	[flowc_ref_stale] =	"ref_stale",
++	[flowc_ref_pf] =	"ref_pf",
++	[flowc_ref_ipsec] =	"ref_ipsec",
++	[flowc_ref_bpf] =	"ref_bpf",
++	[flowc_ref_fwd] =	"ref_fwd",
++	[flowc_ref_down] =	"ref_down",
++	[flowc_ref_mode] =	"ref_mode",
++	[flowc_ref_nomem] =	"ref_nomem",
++	[flowc_ref_hairpin] =	"ref_hairpin",
++	[flowc_ref_iface] =	"ref_iface",
++	[flowc_ref_full] =	"ref_full",
++	[flowc_gen_rt] =	"gen_rt",
++	[flowc_gen_arp] =	"gen_arp",
++	[flowc_gen_if] =	"gen_if",
++	[flowc_gen_vlan] =	"gen_vlan",
++	[flowc_gen_bpf] =	"gen_bpf",
++	[flowc_gen_sysctl] =	"gen_sysctl",
++	[flowc_gen_pf] =	"gen_pf",
++	[flowc_gen_ipsec] =	"gen_ipsec",
++	[flowc_gc_idle] =	"gc_idle",
++	[flowc_gc_stale] =	"gc_stale",
++	[flowc_gc_arp] =	"gc_arp",
++	[flowc_arp_refresh] =	"arp_refresh",
++};
++
++struct flow_kstat {
++	struct kstat_kv		 fks_counters[flowc_ncounters];
++	struct kstat_kv		 fks_sweep_ms;
++};
++
++static struct flow_kstat	 flow_kstat_data;
++
++static int
++flow_kstat_read(struct kstat *ks)
++{
++	struct flow_kstat *fks = ks->ks_data;
++	uint64_t ctrs[flowc_ncounters], scratch[flowc_ncounters];
++	u_int i;
++
++	counters_read(flow_counters, ctrs, flowc_ncounters, scratch);
++	for (i = 0; i < flowc_ncounters; i++)
++		kstat_kv_u64(&fks->fks_counters[i]) = ctrs[i];
++	kstat_kv_u32(&fks->fks_sweep_ms) = atomic_load_int(&flow_sweep_ms);
++	nanouptime(&ks->ks_updated);
++
++	return (0);
++}
++
++static void
++flow_kstat_attach(void)
++{
++	struct flow_kstat *fks = &flow_kstat_data;
++	struct kstat *ks;
++	u_int i;
++
++	ks = kstat_create("flow", 0, "stats", 0, KSTAT_T_KV, 0);
++	if (ks == NULL) {
++		printf("flow: unable to create the stats kstat\n");
++		return;
++	}
++
++	for (i = 0; i < flowc_ncounters; i++) {
++		kstat_kv_init(&fks->fks_counters[i], flow_counter_names[i],
++		    KSTAT_KV_T_COUNTER64);
++	}
++	kstat_kv_init(&fks->fks_sweep_ms, "arp_sweep_ms", KSTAT_KV_T_UINT32);
++
++	ks->ks_data = fks;
++	ks->ks_datalen = sizeof(*fks);
++	ks->ks_read = flow_kstat_read;
++
++	kstat_install(ks);
++}
++#endif /* NKSTAT > 0 */
+diff --git a/sys/net/if_flow.h b/sys/net/if_flow.h
+new file mode 100644
+index 00000000..0734d979
+--- /dev/null
++++ b/sys/net/if_flow.h
+@@ -0,0 +1,125 @@
++/*	$OpenBSD$	*/
++
++/*
++ * Copyright (c) 2026 The usg2bsd authors
++ *
++ * Permission to use, copy, modify, and distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
++ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#ifndef _NET_IF_FLOW_H_
++#define _NET_IF_FLOW_H_
++
++/*
++ * net.flow: a cache of routed IPv4 (source, destination) pairs that lets
++ * the cnmac(4) receive interrupt forward a hit without softnet, ip_input,
++ * ip_forward or a route lookup.
++ *
++ * This header is what the rest of the system sees: the sysctl names that
++ * sysctl(8) shares, and the hooks the network stack calls.  A kernel file
++ * that calls a hook includes "flow.h" before this header.  Without
++ * "pseudo-device flow" every hook is an empty inline function, so the hook
++ * sites compile to nothing.  The flow table itself is private to
++ * <net/if_flowvar.h>.
++ */
++
++#ifdef _KERNEL
++
++#ifndef NFLOW
++#error "include \"flow.h\" before <net/if_flow.h>"
++#endif
++
++struct ifnet;
++struct mbuf;
++
++/* What caused a generation bump; indexes the gen_<src> counters. */
++enum flow_gen_src {
++	FLOW_GEN_RT,
++	FLOW_GEN_ARP,
++	FLOW_GEN_IF,
++	FLOW_GEN_VLAN,
++	FLOW_GEN_BPF,
++	FLOW_GEN_SYSCTL,
++	FLOW_GEN_PF,
++	FLOW_GEN_IPSEC,
++	FLOW_GEN_NSRC
++};
++
++void	flowattach(int);
++
++#if NFLOW > 0
++
++/* Invalidate every flow.  Any context; atomic. */
++void	flow_gen_bump(enum flow_gen_src);
++
++/*
++ * Recompute the learn gate from ip_forwarding, ipsec_in_use and
++ * pf_status.running.  pfi_xcommit() passes whether any pf interface has
++ * PFI_IFLAG_SKIP; other callers pass -1 to keep the last value.  Any
++ * context.
++ */
++void	flow_gate_update(int);
++
++/* Mark a packet ip_forward() is about to send.  Shared netlock. */
++void	flow_fwd_mark(struct mbuf *);
++
++/* Clear the mark at ip_output() entry and where IPsec picks a TDB. */
++void	flow_fwd_clear(struct mbuf *);
++
++/*
++ * HOOK B: ask to learn the pair of a marked packet leaving a physical
++ * port.  Softclock or IPL_NET; never sleeps; never modifies the mbuf.
++ */
++void	flow_learn_request(struct ifnet *, struct mbuf *);
++
++/* net.flow.* handler.  Process context with no locks held. */
++int	flow_sysctl(int *, u_int, void *, size_t *, void *, size_t);
++
++#else /* NFLOW > 0 */
++
++static inline void
++flow_gen_bump(enum flow_gen_src src)
++{
++}
++
++static inline void
++flow_gate_update(int pf_skip_any)
++{
++}
++
++static inline void
++flow_fwd_mark(struct mbuf *m)
++{
++}
++
++static inline void
++flow_fwd_clear(struct mbuf *m)
++{
++}
++
++static inline void
++flow_learn_request(struct ifnet *ifp0, struct mbuf *m)
++{
++}
++
++static inline int
++flow_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
++    void *newp, size_t newlen)
++{
++	return (EOPNOTSUPP);
++}
++
++#endif /* NFLOW > 0 */
++
++#endif /* _KERNEL */
++
++#endif /* _NET_IF_FLOW_H_ */
+diff --git a/sys/net/if_flowvar.h b/sys/net/if_flowvar.h
+new file mode 100644
+index 00000000..1f27ab66
+--- /dev/null
++++ b/sys/net/if_flowvar.h
+@@ -0,0 +1,122 @@
++/*	$OpenBSD$	*/
++
++/*
++ * Copyright (c) 2026 The usg2bsd authors
++ *
++ * Permission to use, copy, modify, and distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
++ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#ifndef _NET_IF_FLOWVAR_H_
++#define _NET_IF_FLOWVAR_H_
++
++/*
++ * Flow cache internals shared by the MI code (if_flow.c), the MD fast path
++ * and ddb.  Include after <sys/smr.h>, <sys/percpu.h>, <netinet/in.h>,
++ * <netinet/if_ether.h> and <net/if_flow.h>.
++ */
++
++#ifdef _KERNEL
++
++#define FLOW_MODE_OFF		0	/* stock forwarding and RX */
++#define FLOW_MODE_MBUF		1	/* mbuf hit path */
++#define FLOW_MODE_ZEROCOPY	2	/* not built (EOPNOTSUPP) */
++#define FLOW_MODE_SHADOW	3	/* look up and count only */
++
++/*
++ * Lookup key: ingress port, 802.1Q VID with the tagged/untagged
++ * distinction, IPv4 source and destination.  PCP and DEI are not part of
++ * it.  12 bytes without padding; zero it before filling all the same.
++ */
++struct flow_key {
++	uint16_t		 fk_port;	/* ingress port number */
++	uint16_t		 fk_vid;	/* FK_TAGGED | VID; 0 = untagged */
++	uint32_t		 fk_src;	/* network byte order */
++	uint32_t		 fk_dst;	/* network byte order */
++};
++#define FK_TAGGED		0x8000
++
++/* Priority rules, reproducing vlan_vinput() and vlan_transmit(). */
++#define FLOW_PRIO_PCP		0xff	/* pf.prio = swap01(ingress PCP) */
++#define FLOW_PCP_PRIO		0xff	/* egress PCP = swap01(pf.prio) */
++
++#define FLOW_NCPU		2	/* CN5020; one counter line per CPU */
++
++struct flow_ctr {
++	uint64_t		 fc_pkts;
++	uint64_t		 fc_bytes;
++} __aligned(CACHELINESIZE);
++
++/*
++ *  Locks used to protect struct members in this file:
++ *	I	immutable after the flow is linked
++ *	F	flow_mtx
++ *	G	the single flow_tq worker (learn and GC)
++ *	a	atomic operations
++ *	c	written only by the CPU that owns the slot
++ */
++struct flow {
++	/* cache line 0: everything the hit path reads */
++	SMR_LIST_ENTRY(flow)	 f_hash;	/* [F] bucket linkage */
++	struct flow_key		 f_key;		/* [I] */
++	u_int			 f_gen;		/* [I] flow_gen at commit */
++	u_int			 f_flags;	/* [a] FLOW_DEAD */
++	void			*f_egress;	/* [I] MD egress handle */
++	uint16_t		 f_mtu;		/* [I] min(route, egress) MTU */
++	uint8_t			 f_l2len;	/* [I] 14 or 18 */
++	uint8_t			 f_prio;	/* [I] FLOW_PRIO_PCP or 0..7 */
++	uint8_t			 f_txpcp;	/* [I] FLOW_PCP_PRIO or 0..7 */
++	uint8_t			 f_l2[18];	/* [I] dst, src, [TPID, TCI], type */
++	uint8_t			 f_in_dmac[ETHER_ADDR_LEN];
++						/* [I] ingress logical lladdr */
++
++	/* cold: GC, ARP refresh, ddb */
++	uint16_t		 f_in_ifidx;	/* [I] logical ingress */
++	uint16_t		 f_out_ifidx;	/* [I] logical egress */
++	u_int			 f_rtableid;	/* [I] */
++	struct in_addr		 f_nexthop;	/* [I] */
++	uint64_t		 f_seen;	/* [G] hit sum at the last GC */
++	time_t			 f_lastact;	/* [G] uptime f_seen last moved */
++	struct smr_entry	 f_smr;
++
++	/* written by the hit path */
++	struct flow_ctr		 f_ctr[FLOW_NCPU];	/* [c] */
++} __aligned(CACHELINESIZE);
++
++#define FLOW_DEAD		0x1
++
++/*
++ * Machine-dependent operations, registered once by the MD fast path
++ * (test stubs on amd64).  DESIGN §3.1.
++ */
++struct flow_md_ops {
++	/* physical port number of ifp, or -1.  Shared netlock. */
++	int	 (*fmo_port)(struct ifnet *);
++	/* opaque egress handle stored in f_egress */
++	void	*(*fmo_handle)(struct ifnet *);
++	/* returns once no RX handler is running.  Process context. */
++	void	 (*fmo_rx_barrier)(void);
++	/*
++	 * bounded RX for modes 1-3, stock settings for mode 0.  Process
++	 * context, no spinlock held.
++	 */
++	void	 (*fmo_sched_set)(u_int, u_int, u_int);
++};
++
++extern u_int	flow_mode;			/* [a] FLOW_MODE_* */
++extern u_int	flow_gen;			/* [a] generation */
++
++void	flow_md_register(const struct flow_md_ops *);
++
++#endif /* _KERNEL */
++
++#endif /* _NET_IF_FLOWVAR_H_ */

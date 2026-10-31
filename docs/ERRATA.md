@@ -238,3 +238,12 @@ sections 1–6 mean those files.
 No requirement, design or task content changed. Only references were updated:
 SPEC (status, companion docs, §7.2 heading, §9), DESIGN (status, companion docs,
 §3.1), NOTES (introduction), STOCK_TEST_PLAN (scope) and this file (introduction).
+
+## 8. Implementation findings (from 2026-10-31)
+
+Findings made while writing the fork's code. Each has a `finding` issue with
+the evidence; source lines are at `c595b86dd344`.
+
+| Erratum | Sev | What was wrong | Documentation correction | Verification |
+|---|---|---|---|---|
+| E80 | L | DESIGN §4 (and the §3.1 MD ops) placed `struct flow_key`, `struct flow` and `struct flow_md_ops` in `if_flow.h`, the header every hook site includes. With flow configured, each hook site would need `<sys/percpu.h>` (`CACHELINESIZE` on amd64, `percpu.h:22-23`), `<sys/smr.h>`, `<netinet/in.h>` and `<netinet/if_ether.h>`. | `if_flow.h` keeps the sysctl names and hook API; the structures, MD ops and internal prototypes move to `if_flowvar.h`. DESIGN §3, §3.1, §4. Issue: "Finding: flow data structures do not belong in the hook-API header". | T1.0 |

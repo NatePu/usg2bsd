@@ -15,7 +15,7 @@ BASE=c595b86dd3448693481299bfba2dc94134ddfa2f
 URL=https://github.com/openbsd/src.git
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DIR=${1:-$ROOT/src}
-SPARSE="sys sbin/sysctl usr.sbin/ospfd"
+SPARSE="sys sbin/sysctl usr.sbin/ospfd usr.sbin/config"
 
 if [ -e "$DIR/.git" ]; then
 	git -C "$DIR" cat-file -e "$BASE^{commit}" ||

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Syntax-check OpenBSD amd64 GENERIC.MP kernel sources with clang, on any host.
 
-    tools/kcheck.py [--src DIR] [--no-flow] [--keep-going] FILE...
+    tools/kcheck.py [--src DIR] [--no-flow] [--keep-going] [--asm] FILE...
 
 FILE paths are relative to the tree (e.g. sys/net/if_flow.c) or absolute.
 This is a pre-build sanity check for the development Mac: it emulates what
@@ -12,6 +12,8 @@ config(8) or check octeon (Apple clang has no MIPS backend). The OpenBSD
 build host stays the gate for every Done-when (AGENTS.md).
 
 --no-flow checks as if `pseudo-device flow` were absent (NFLOW 0).
+--asm prints the -O2 amd64 assembly instead (e.g. to show that a hook
+site compiles to nothing without flow).
 Generated headers go to <repo>/.kcheck/amd64 (gitignored).
 """
 import argparse
@@ -110,17 +112,21 @@ def main():
     ap.add_argument("--src", default=str(ROOT / "src"))
     ap.add_argument("--no-flow", action="store_true")
     ap.add_argument("--keep-going", action="store_true")
+    ap.add_argument("--asm", action="store_true")
     ap.add_argument("files", nargs="+")
     a = ap.parse_args()
     src = Path(a.src).resolve()
     obj, opts = prepare(src, flow=not a.no_flow)
     s = src / "sys"
-    base = ["clang", "-target", TARGET, "-fsyntax-only", "-nostdinc", f"-I{s}", f"-I{obj}",
+    mode = ["-S", "-O2", "-o", "-"] if a.asm else ["-fsyntax-only"]
+    base = ["clang", "-target", TARGET] + mode + ["-nostdinc", f"-I{s}", f"-I{obj}",
             f"-I{s}/arch", "-D_KERNEL"] + opts + PARAM + CWARN + CMACH + NEWER_CLANG
     failed = 0
     for f in a.files:
         path = Path(f) if os.path.isabs(f) else src / f
         p = subprocess.run(base + [str(path)], capture_output=True, text=True)
+        if a.asm and p.returncode == 0:
+            sys.stdout.write(p.stdout)
         status = "ok" if p.returncode == 0 else "FAIL"
         print(f"{status:4} {f}")
         if p.returncode:
