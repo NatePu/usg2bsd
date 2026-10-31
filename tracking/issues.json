@@ -617,7 +617,15 @@
    "state": "open",
    "state_reason": null,
    "pin": false,
-   "comments": [],
+   "comments": [
+    {
+     "at": "2026-10-31 09:59 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Starting T1.2 at the desk (Done-when needs {{C2}}: self-test on an amd64 boot, kstat and ddb output).\n\nPlan, one fork commit:\n- `if_flow.c`: SipHash-2-4 bucket hash over the 12-byte key; `flow_lookup()` for SMR readers; `flow_table_add()` under `flow_mtx` with the DESIGN §5.3 step 7–8 semantics (live same-key same-generation entry = duplicate; a dead or stale same-key entry is unlinked first so it never blocks relearning; `net.flow.max` → full); `flow_unlink()` marks DEAD, unlinks and frees through `smr_call()`; `flow_free()` returns to the pool.\n- Mode transition step 5: flush the table bucket by bucket, then `smr_barrier()`.\n- `flow:0:stats` gets `yield` per {{F3}} (SPEC §6.2 Kstat column, ERRATA E83), with `flow_count_yield()` for the MD RX loop.\n- ddb `show flows` (summary + first entries) and `show flow <addr>` in `db_show_cmds[]` (`sys/ddb/db_command.c`).\n- DIAGNOSTIC boot self-test from `flowattach()`: insert, lookup, absent key, duplicate, stale same-key replacement, unlink, full, plus 64 keys across buckets; prints one result line; no panic on failure.\n\nDesk verification: `tools/kcheck.py` with and without DIAGNOSTIC-relevant code, and a userland harness that runs the table code and the self-test on the Mac against stub SMR/mutex/pool primitives (tests logic, not kernel concurrency).",
+     "queued": true,
+     "posted": false
+    }
+   ],
    "number": null
   },
   {
@@ -1511,6 +1519,23 @@
    ],
    "number": null,
    "state_synced": false
+  },
+  {
+   "key": "F3",
+   "title": "Finding: SPEC §6.2 does not say which kstat holds which counter",
+   "labels": [
+    "finding",
+    "phase-1",
+    "env:desk"
+   ],
+   "body": "**Finding (low), found while starting {{T1.2}}.**\n\nSPEC §6.2 names three kstats — per port `cnmacN:0:flow`, global `flow:0:stats`, global `fpa:0:pools` — and then lists all counters in one table without saying which kstat holds which. T1.2 asks for \"global kstat `flow:0:stats` with the SPEC §6.2 names\", which read literally would put per-port hit-path counters (`hit`, `miss`, `sl_*`, …) in the global kstat, while {{T2.1}} creates `cnmacN:0:flow` for them. The `yield` counter is per RX group (one per CPU, shared by all ports), so it cannot be attributed to a port at all.\n\n**Resolution** (SPEC §6.2 gets a \"Kstat\" column; ERRATA E83):\n\n| Kstat | Counters | Owner |\n|---|---|---|\n| `flow:0:stats` (global) | `lrn_*`, `ref_*`, `gen_*`, `gc_*`, `arp_refresh`, `arp_sweep_ms`, `yield` | MI `if_flow.c`; the MD RX loop counts `yield` through an MI helper |\n| `cnmacN:0:flow` (per port) | `hit`, `miss`, `stale`, `sl_check`, `sl_ttl`, `sl_mtu`, `sl_dmac`, `sl_down` (ingress port), `txq_drop` (egress port) | MD, {{T2.1}}/{{T2.5}} |\n| `fpa:0:pools` (global) | `fpa_pkt`, `fpa_wqe`, `fpa_cmd`, `fpa_sg` | MD, {{T2.1}} |\n\nVerification: {{T1.2}} (flow:0:stats contents), {{T2.1}}.\n",
+   "parent": "E-P1",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
   }
  ],
  "dependencies_unsupported": false

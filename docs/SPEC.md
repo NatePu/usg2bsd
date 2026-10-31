@@ -195,28 +195,31 @@ Requires the fork's rebuilt `sysctl(8)` (new MIB family, ERRATA E27).
 
 Per port `cnmacN:0:flow`, global `flow:0:stats` and global `fpa:0:pools`
 (the FPA pools are shared by all ports). Key names fit 15
-characters.
+characters. The Kstat column says where each counter lives (ERRATA E83):
+hit-path counters are per port (ingress, except `txq_drop` on the egress
+port); learning, refusal, generation, GC and `yield` counters are global,
+because RX groups are per CPU and shared by all ports.
 
-| Counter | Meaning |
-|---|---|
-| `hit`, `miss` | Lookups that hit / missed. |
-| `stale` | Flow found but generation old. |
-| `sl_check` | Rejected by word2 or header checks. |
-| `sl_ttl`, `sl_mtu`, `sl_dmac` | Rejected for TTL ≤ 1, size, destination MAC. |
-| `sl_down` | Ingress or egress port not running / link down. |
-| `txq_drop` | Egress ifq full or packet evicted by priq (packet dropped, as the slow path would). |
-| `lrn_req`, `lrn_dup`, `lrn_qfull` | Learn requests queued, skipped (already learned), dropped (ring full). |
-| `lrn_ok` | Flows created. |
-| `ref_route`, `ref_arp`, `ref_stale` | Commit refused: route mismatch, next-hop MAC mismatch/unresolved, generation moved. |
-| `ref_pf`, `ref_ipsec`, `ref_bpf`, `ref_fwd` | Commit refused: pf could filter, IPsec in use, bpf attached, `net.inet.ip.forwarding` is not 1. |
-| `ref_down`, `ref_mode`, `ref_nomem` | Commit refused: interface not operational, commits closed by a mode change, or pool allocation failed. |
-| `ref_hairpin`, `ref_iface`, `ref_full` | Commit refused: same logical ingress/egress (conservative redirect exclusion), unsupported or monitor interface (including a bridge, veb, tpmr, trunk or aggr member on logical VLAN or parent, or IFXF_MONITOR), table full. |
-| `gen_<src>` | Generation bumps by source (`gen_rt`, `gen_arp`, `gen_if`, `gen_vlan`, `gen_bpf`, `gen_sysctl`, `gen_pf`, `gen_ipsec`). |
-| `gc_idle`, `gc_stale`, `gc_arp` | Flows freed by the GC: idle, stale generation, or next hop's ARP entry expired, rejected or unresolved. |
-| `arp_refresh` | ARP refreshes sent for active next hops. |
-| `arp_sweep_ms` | Duration of the last complete GC/refresh sweep, milliseconds. |
-| `yield` | Times the RX loop hit its budget. |
-| `fpa_pkt`, `fpa_wqe`, `fpa_cmd`, `fpa_sg` | FPA free counts (`fpa:0:pools`). |
+| Counter | Kstat | Meaning |
+|---|---|---|
+| `hit`, `miss` | cnmacN | Lookups that hit / missed. |
+| `stale` | cnmacN | Flow found but generation old. |
+| `sl_check` | cnmacN | Rejected by word2 or header checks. |
+| `sl_ttl`, `sl_mtu`, `sl_dmac` | cnmacN | Rejected for TTL ≤ 1, size, destination MAC. |
+| `sl_down` | cnmacN | Ingress or egress port not running / link down. |
+| `txq_drop` | cnmacN (egress) | Egress ifq full or packet evicted by priq (packet dropped, as the slow path would). |
+| `lrn_req`, `lrn_dup`, `lrn_qfull` | flow | Learn requests queued, skipped (already learned), dropped (ring full). |
+| `lrn_ok` | flow | Flows created. |
+| `ref_route`, `ref_arp`, `ref_stale` | flow | Commit refused: route mismatch, next-hop MAC mismatch/unresolved, generation moved. |
+| `ref_pf`, `ref_ipsec`, `ref_bpf`, `ref_fwd` | flow | Commit refused: pf could filter, IPsec in use, bpf attached, `net.inet.ip.forwarding` is not 1. |
+| `ref_down`, `ref_mode`, `ref_nomem` | flow | Commit refused: interface not operational, commits closed by a mode change, or pool allocation failed. |
+| `ref_hairpin`, `ref_iface`, `ref_full` | flow | Commit refused: same logical ingress/egress (conservative redirect exclusion), unsupported or monitor interface (including a bridge, veb, tpmr, trunk or aggr member on logical VLAN or parent, or IFXF_MONITOR), table full. |
+| `gen_<src>` | flow | Generation bumps by source (`gen_rt`, `gen_arp`, `gen_if`, `gen_vlan`, `gen_bpf`, `gen_sysctl`, `gen_pf`, `gen_ipsec`). |
+| `gc_idle`, `gc_stale`, `gc_arp` | flow | Flows freed by the GC: idle, stale generation, or next hop's ARP entry expired, rejected or unresolved. |
+| `arp_refresh` | flow | ARP refreshes sent for active next hops. |
+| `arp_sweep_ms` | flow | Duration of the last complete GC/refresh sweep, milliseconds. |
+| `yield` | flow | Times the RX loop hit its budget. |
+| `fpa_pkt`, `fpa_wqe`, `fpa_cmd`, `fpa_sg` | fpa | FPA free counts (`fpa:0:pools`). |
 
 ### 6.3 ddb
 

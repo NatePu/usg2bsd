@@ -1,0 +1,533 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NP <50584693+NatePu@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 10:06:04 -0400
+Subject: [PATCH] T1.2: flow table core, ddb commands, boot self-test
+
+- net/if_flow.c: SipHash-2-4 buckets; flow_lookup() for SMR readers;
+  flow_table_add() under flow_mtx (live same-key same-gen = duplicate,
+  dead or stale same-key entry unlinked first, net.flow.max = full);
+  flow_unlink() marks DEAD and frees via smr_call(); flow_alloc().
+- Mode transition step 5: flush bucket by bucket, then smr_barrier().
+- flow:0:stats gains "yield" with flow_count_yield() (ERRATA E83).
+- ddb: show flows [/count], show flow <addr> (db_command.c,
+  db_interface.h).
+- DIAGNOSTIC boot self-test: insert, lookup, absent key, duplicate,
+  stale replacement, unlink, full, 64 keys; one result line, no panic.
+  FLOW_SELFTEST builds it alone for the host-side harness.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ sys/ddb/db_command.c   |   6 +
+ sys/ddb/db_interface.h |   4 +
+ sys/net/if_flow.c      | 387 ++++++++++++++++++++++++++++++++++++++++-
+ sys/net/if_flowvar.h   |  14 ++
+ 4 files changed, 408 insertions(+), 3 deletions(-)
+
+diff --git a/sys/ddb/db_command.c b/sys/ddb/db_command.c
+index a0aeb5e3..6cd4a4cd 100644
+--- a/sys/ddb/db_command.c
++++ b/sys/ddb/db_command.c
+@@ -30,6 +30,8 @@
+ /*
+  * Command dispatcher.
+  */
++#include "flow.h"
++
+ #include <sys/param.h>
+ #include <sys/systm.h>
+ #include <sys/proc.h>
+@@ -618,6 +620,10 @@ const struct db_command db_show_cmds[] = {
+ 	{ "breaks",	db_listbreak_cmd,	0,	NULL },
+ 	{ "buf",	db_buf_print_cmd,	0,	NULL },
+ 	{ "extents",	db_extent_print_cmd,	0,	NULL },
++#if NFLOW > 0
++	{ "flow",	db_show_flow,		0,	NULL },
++	{ "flows",	db_show_flows,		0,	NULL },
++#endif
+ #ifdef WITNESS
+ 	{ "locks",	db_witness_list,	0,	NULL },
+ #endif
+diff --git a/sys/ddb/db_interface.h b/sys/ddb/db_interface.h
+index 4de8b33c..32e8d289 100644
+--- a/sys/ddb/db_interface.h
++++ b/sys/ddb/db_interface.h
+@@ -72,6 +72,10 @@ struct rtentry;
+ int db_show_rtentry(struct rtentry *, void *, unsigned int);
+ int db_show_rtable(int, unsigned int);
+ 
++/* net/if_flow.c */
++void db_show_flow(db_expr_t, int, db_expr_t, char *);
++void db_show_flows(db_expr_t, int, db_expr_t, char *);
++
+ /* nfs/nfs_debug.c */
+ void db_show_all_nfsreqs(db_expr_t, int, db_expr_t, char *);
+ void nfs_request_print(void *, int, int (*)(const char *, ...));
+diff --git a/sys/net/if_flow.c b/sys/net/if_flow.c
+index 500066a3..fd317e5d 100644
+--- a/sys/net/if_flow.c
++++ b/sys/net/if_flow.c
+@@ -58,6 +58,12 @@
+ #include <net/if_flow.h>
+ #include <net/if_flowvar.h>
+ 
++#ifdef DDB
++#include <machine/db_machdep.h>
++#include <ddb/db_output.h>
++#include <ddb/db_interface.h>
++#endif
++
+ #define FLOW_NBUCKETS		1024	/* power of two */
+ #define FLOW_MAX_LIMIT		4096	/* net.flow.max upper bound */
+ #define FLOW_IDLE_DEFAULT	30	/* seconds */
+@@ -67,8 +73,9 @@
+ #define FLOW_YIELD_LIMIT	100000	/* microseconds */
+ 
+ /*
+- * Global counters, exported as kstat flow:0:stats.  Hit-path counters
+- * (hit, miss, stale, sl_*, txq_drop, yield) belong to the MD fast path.
++ * Global counters, exported as kstat flow:0:stats.  The per-port hit-path
++ * counters (hit, miss, stale, sl_*, txq_drop) belong to the MD fast path
++ * (SPEC 6.2, ERRATA E83).
+  */
+ enum flow_counter {
+ 	flowc_lrn_req,
+@@ -100,6 +107,7 @@ enum flow_counter {
+ 	flowc_gc_stale,
+ 	flowc_gc_arp,
+ 	flowc_arp_refresh,
++	flowc_yield,			/* MD RX loop, flow_count_yield() */
+ 
+ 	flowc_ncounters
+ };
+@@ -158,6 +166,11 @@ static int		 flow_set_mode(int);
+ static int		 flow_transition(u_int);
+ static int		 flow_sysctl_sched(int, void *, size_t *, void *, size_t);
+ static int		 flow_yield_round(int);
++static void		 flow_free(void *);
++static void		 flow_flush(void);
++#if defined(DIAGNOSTIC) || defined(FLOW_SELFTEST)
++static void		 flow_selftest(void);
++#endif
+ 
+ #if NKSTAT > 0
+ static void		 flow_kstat_attach(void);
+@@ -193,6 +206,146 @@ flowattach(int count)
+ #if NKSTAT > 0
+ 	flow_kstat_attach();
+ #endif
++#if defined(DIAGNOSTIC) || defined(FLOW_SELFTEST)
++	flow_selftest();
++#endif
++}
++
++/*
++ * Flow table.  Readers (the MD hit path, the amd64 test hook) look up under
++ * SMR without a lock; writers hold flow_mtx.  Only the single flow_tq
++ * worker inserts and reaps, and the mode setter flushes only after waiting
++ * for that worker (DESIGN 5.8).
++ */
++
++static inline struct flow_bucket *
++flow_bucket(const struct flow_key *key)
++{
++	uint64_t h;
++
++	h = SipHash24(&flow_hashkey, key, sizeof(*key));
++	return (&flow_tbl[h & (FLOW_NBUCKETS - 1)]);
++}
++
++static inline int
++flow_key_eq(const struct flow_key *a, const struct flow_key *b)
++{
++	return (a->fk_src == b->fk_src && a->fk_dst == b->fk_dst &&
++	    a->fk_port == b->fk_port && a->fk_vid == b->fk_vid);
++}
++
++/*
++ * Find the entry for key, dead or alive; the caller checks FLOW_DEAD and
++ * f_gen.  The caller is inside an SMR read section and must not touch the
++ * result after leaving it.
++ */
++struct flow *
++flow_lookup(const struct flow_key *key)
++{
++	struct flow *f;
++
++	SMR_ASSERT_CRITICAL();
++	SMR_LIST_FOREACH(f, flow_bucket(key), f_hash) {
++		if (flow_key_eq(&f->f_key, key))
++			return (f);
++	}
++	return (NULL);
++}
++
++/*
++ * Link f, a fully initialised flow with f_gen set, unless a live entry
++ * with the same key and generation is already linked.  A dead or stale
++ * entry with the same key is unlinked first, so it never blocks
++ * relearning until the next GC (DESIGN 5.3 step 7).  The caller holds
++ * flow_mtx and, on any result but FLOW_ADD_OK, still owns f.
++ */
++int
++flow_table_add(struct flow *f)
++{
++	struct flow_bucket *b = flow_bucket(&f->f_key);
++	struct flow *of;
++
++	MUTEX_ASSERT_LOCKED(&flow_mtx);
++
++	SMR_LIST_FOREACH_LOCKED(of, b, f_hash) {
++		if (flow_key_eq(&of->f_key, &f->f_key))
++			break;
++	}
++	if (of != NULL) {
++		if (!ISSET(atomic_load_int(&of->f_flags), FLOW_DEAD) &&
++		    of->f_gen == f->f_gen)
++			return (FLOW_ADD_DUP);
++		flow_unlink(of);
++	}
++	if (flow_count >= (u_int)flow_max)
++		return (FLOW_ADD_FULL);
++
++	SMR_LIST_INSERT_HEAD_LOCKED(b, f, f_hash);
++	flow_count++;
++	return (FLOW_ADD_OK);
++}
++
++/*
++ * Mark f dead and unlink it.  Readers that already hold it see FLOW_DEAD;
++ * the memory goes back to the pool after the next SMR grace period.
++ */
++void
++flow_unlink(struct flow *f)
++{
++	MUTEX_ASSERT_LOCKED(&flow_mtx);
++	KASSERT(flow_count > 0);
++
++	atomic_setbits_int(&f->f_flags, FLOW_DEAD);
++	SMR_LIST_REMOVE_LOCKED(f, f_hash);
++	flow_count--;
++	smr_call(&f->f_smr, flow_free, f);
++}
++
++static void
++flow_free(void *arg)
++{
++	pool_put(&flow_pool, arg);
++}
++
++/* Allocate a zeroed flow for the caller to fill in, or NULL. */
++struct flow *
++flow_alloc(void)
++{
++	return (pool_get(&flow_pool, PR_NOWAIT | PR_ZERO));
++}
++
++/* Free a flow that was never linked. */
++void
++flow_alloc_free(struct flow *f)
++{
++	pool_put(&flow_pool, f);
++}
++
++/*
++ * Mode transition step 5: unlink every flow.  Commits, GC and the worker
++ * are stopped, so nothing inserts meanwhile; flow_mtx is dropped between
++ * buckets to keep IPL_NET hold times short.
++ */
++static void
++flow_flush(void)
++{
++	struct flow *f, *nf;
++	u_int i;
++
++	for (i = 0; i < nitems(flow_tbl); i++) {
++		mtx_enter(&flow_mtx);
++		SMR_LIST_FOREACH_SAFE_LOCKED(f, &flow_tbl[i], f_hash, nf)
++			flow_unlink(f);
++		mtx_leave(&flow_mtx);
++	}
++	KASSERT(flow_count == 0);
++}
++
++/* The MD RX loop ran out of budget (SPEC 6.2 yield). */
++void
++flow_count_yield(void)
++{
++	counters_inc(flow_counters, flowc_yield);
+ }
+ 
+ void
+@@ -362,7 +515,9 @@ flow_transition(u_int mode)
+ 	taskq_del_barrier(flow_tq, &flow_learn_t);
+ 	taskq_del_barrier(flow_tq, &flow_gc_t);
+ 
+-	/* 5. empty the table and the learn ring */
++	/* 5. empty the table and the learn ring; wait out the readers */
++	flow_flush();
++	smr_barrier();
+ 
+ 	/* 6. stock RX scheduling for mode 0, bounded for modes 1-3 */
+ 	if (flow_md != NULL)
+@@ -434,6 +589,7 @@ static const char *const flow_counter_names[flowc_ncounters] = {
+ 	[flowc_gc_stale] =	"gc_stale",
+ 	[flowc_gc_arp] =	"gc_arp",
+ 	[flowc_arp_refresh] =	"arp_refresh",
++	[flowc_yield] =		"yield",
+ };
+ 
+ struct flow_kstat {
+@@ -485,3 +641,228 @@ flow_kstat_attach(void)
+ 	kstat_install(ks);
+ }
+ #endif /* NKSTAT > 0 */
++
++#ifdef DDB
++static void
++db_flow_print_addr(uint32_t a)
++{
++	const uint8_t *p = (const uint8_t *)&a;
++
++	db_printf("%u.%u.%u.%u", p[0], p[1], p[2], p[3]);
++}
++
++static void
++db_flow_print(struct flow *f, int full)
++{
++	unsigned long long pkts = 0, bytes = 0;
++	u_int i;
++
++	for (i = 0; i < FLOW_NCPU; i++) {
++		pkts += f->f_ctr[i].fc_pkts;
++		bytes += f->f_ctr[i].fc_bytes;
++	}
++	db_printf("%p port %u ", f, f->f_key.fk_port);
++	if (f->f_key.fk_vid & FK_TAGGED)
++		db_printf("vid %u ", f->f_key.fk_vid & ~FK_TAGGED);
++	else
++		db_printf("untagged ");
++	db_flow_print_addr(f->f_key.fk_src);
++	db_printf(" > ");
++	db_flow_print_addr(f->f_key.fk_dst);
++	db_printf(" gen %u%s%s if %u>%u nh ", f->f_gen,
++	    f->f_gen == flow_gen ? "" : " stale",
++	    ISSET(f->f_flags, FLOW_DEAD) ? " DEAD" : "",
++	    f->f_in_ifidx, f->f_out_ifidx);
++	db_flow_print_addr(f->f_nexthop.s_addr);
++	db_printf(" mtu %u pkts %llu\n", f->f_mtu, pkts);
++	if (!full)
++		return;
++
++	db_printf("  egress %p rtable %u prio %u txpcp %u bytes %llu\n",
++	    f->f_egress, f->f_rtableid, f->f_prio, f->f_txpcp, bytes);
++	db_printf("  l2 (%u):", f->f_l2len);
++	for (i = 0; i < f->f_l2len && i < sizeof(f->f_l2); i++)
++		db_printf(" %02x", f->f_l2[i]);
++	db_printf("\n  in dmac %02x:%02x:%02x:%02x:%02x:%02x",
++	    f->f_in_dmac[0], f->f_in_dmac[1], f->f_in_dmac[2],
++	    f->f_in_dmac[3], f->f_in_dmac[4], f->f_in_dmac[5]);
++	db_printf(" seen %llu lastact %lld\n",
++	    (unsigned long long)f->f_seen, (long long)f->f_lastact);
++	for (i = 0; i < FLOW_NCPU; i++) {
++		db_printf("  cpu%u pkts %llu bytes %llu\n", i,
++		    (unsigned long long)f->f_ctr[i].fc_pkts,
++		    (unsigned long long)f->f_ctr[i].fc_bytes);
++	}
++}
++
++/* show flows [/count]: global state and the first entries (32 by default) */
++void
++db_show_flows(db_expr_t addr, int have_addr, db_expr_t count, char *modif)
++{
++	struct flow *f;
++	u_int i, n = 0, limit;
++
++	limit = count == -1 ? 32 : count;
++	db_printf("mode %u (requested %u) gen %u flows %u max %d"
++	    " learn-gate %u commit %d gc %d accepting %d\n",
++	    flow_mode, flow_mode_req, flow_gen, flow_count, flow_max,
++	    flow_learn_gate, flow_commit_enabled, flow_gc_enabled,
++	    flow_accepting);
++	for (i = 0; i < nitems(flow_tbl); i++) {
++		SMR_LIST_FOREACH_LOCKED(f, &flow_tbl[i], f_hash) {
++			if (n++ >= limit)
++				return;
++			db_flow_print(f, 0);
++		}
++	}
++}
++
++/* show flow <addr>: one entry in full */
++void
++db_show_flow(db_expr_t addr, int have_addr, db_expr_t count, char *modif)
++{
++	if (!have_addr) {
++		db_printf("usage: show flow <address>\n");
++		return;
++	}
++	db_flow_print((struct flow *)addr, 1);
++}
++#endif /* DDB */
++
++#if defined(DIAGNOSTIC) || defined(FLOW_SELFTEST)
++/* FLOW_SELFTEST builds the self-test alone (tests/flowtable). */
++static struct flow *
++flow_selftest_new(u_int i, u_int gen)
++{
++	struct flow *f;
++
++	f = flow_alloc();
++	if (f == NULL)
++		return (NULL);
++	f->f_key.fk_port = i % 3;
++	f->f_key.fk_vid = (i & 1) ? FK_TAGGED | (1 + i % 4094) : 0;
++	f->f_key.fk_src = htonl(0x0a000000 | i);	/* 10.0.0.0/8 */
++	f->f_key.fk_dst = htonl(0xc6120000 | i);	/* 198.18.0.0/15 */
++	f->f_gen = gen;
++	f->f_l2len = ETHER_HDR_LEN;
++	return (f);
++}
++
++static int
++flow_selftest_find(u_int i, struct flow *expect)
++{
++	struct flow_key k;
++	struct flow *f;
++
++	memset(&k, 0, sizeof(k));
++	k.fk_port = i % 3;
++	k.fk_vid = (i & 1) ? FK_TAGGED | (1 + i % 4094) : 0;
++	k.fk_src = htonl(0x0a000000 | i);
++	k.fk_dst = htonl(0xc6120000 | i);
++	smr_read_enter();
++	f = flow_lookup(&k);
++	smr_read_leave();
++	return (f == expect);
++}
++
++/* Add f; anything the table refuses was never linked and is freed here. */
++static int
++flow_selftest_add(struct flow *f)
++{
++	int r;
++
++	mtx_enter(&flow_mtx);
++	r = flow_table_add(f);
++	mtx_leave(&flow_mtx);
++	if (r != FLOW_ADD_OK)
++		flow_alloc_free(f);
++	return (r);
++}
++
++/*
++ * DIAGNOSTIC boot self-test of the table operations: insert, lookup, an
++ * absent key, duplicate, stale same-key replacement, unlink, full, and 64
++ * keys spread over the buckets.  It runs in flowattach() with every gate
++ * closed, ends by flushing the table and prints one line.  A failure does
++ * not panic, so the kernel still boots for inspection.
++ */
++static void
++flow_selftest(void)
++{
++	struct flow *a, *b, *f, *many[64];
++	const char *fail = NULL;
++	int saved_max = flow_max, r;
++	u_int gen = atomic_load_int(&flow_gen), i, checks = 0;
++
++#define FLOW_ST(cond, what) do {					\
++	checks++;							\
++	if (fail == NULL && !(cond))					\
++		fail = (what);						\
++} while (0)
++
++	if ((a = flow_selftest_new(0, gen)) == NULL)
++		goto nomem;
++	r = flow_selftest_add(a);
++	FLOW_ST(r == FLOW_ADD_OK && flow_count == 1, "insert");
++	FLOW_ST(flow_selftest_find(0, r == FLOW_ADD_OK ? a : NULL), "lookup");
++	FLOW_ST(flow_selftest_find(1, NULL), "absent key");
++
++	if ((f = flow_selftest_new(0, gen)) == NULL)	/* same key and gen */
++		goto nomem;
++	r = flow_selftest_add(f);
++	FLOW_ST(r == FLOW_ADD_DUP && flow_count == 1, "duplicate");
++	FLOW_ST(flow_selftest_find(0, a), "lookup after duplicate");
++
++	if ((b = flow_selftest_new(0, gen + 1)) == NULL) /* newer gen */
++		goto nomem;
++	r = flow_selftest_add(b);			/* unlinks a */
++	FLOW_ST(r == FLOW_ADD_OK && flow_count == 1, "stale replacement");
++	FLOW_ST(flow_selftest_find(0, r == FLOW_ADD_OK ? b : a),
++	    "lookup after replacement");
++	if (r == FLOW_ADD_OK) {
++		mtx_enter(&flow_mtx);
++		flow_unlink(b);
++		mtx_leave(&flow_mtx);
++		FLOW_ST(flow_count == 0 && flow_selftest_find(0, NULL),
++		    "unlink");
++	}
++
++	/* full: with a limit of two the third flow is refused */
++	flow_max = flow_count + 2;
++	for (i = 1; i <= 3; i++) {
++		if ((f = flow_selftest_new(i, gen)) == NULL)
++			goto nomem;
++		r = flow_selftest_add(f);
++		FLOW_ST(r == (i <= 2 ? FLOW_ADD_OK : FLOW_ADD_FULL), "full");
++	}
++	flow_max = saved_max;
++
++	/* 64 more keys over the buckets, every one found */
++	for (i = 0; i < nitems(many); i++) {
++		if ((f = flow_selftest_new(i + 4, gen)) == NULL)
++			goto nomem;
++		many[i] = flow_selftest_add(f) == FLOW_ADD_OK ? f : NULL;
++		FLOW_ST(many[i] != NULL, "insert 64");
++	}
++	for (i = 0; i < nitems(many); i++) {
++		if (many[i] != NULL)
++			FLOW_ST(flow_selftest_find(i + 4, many[i]),
++			    "lookup 64");
++	}
++	FLOW_ST(flow_count == 2 + nitems(many), "count");
++	goto out;
++
++nomem:
++	fail = "allocation";
++out:
++	flow_max = saved_max;
++	flow_flush();
++	FLOW_ST(flow_count == 0, "empty afterwards");
++#undef FLOW_ST
++
++	if (fail == NULL)
++		printf("flow: table self-test passed (%u checks)\n", checks);
++	else
++		printf("flow: table self-test FAILED: %s\n", fail);
++}
++#endif /* DIAGNOSTIC || FLOW_SELFTEST */
+diff --git a/sys/net/if_flowvar.h b/sys/net/if_flowvar.h
+index 2b90bbf3..d6b8fd2c 100644
+--- a/sys/net/if_flowvar.h
++++ b/sys/net/if_flowvar.h
+@@ -123,6 +123,20 @@ extern u_int	flow_gen;			/* [a] generation */
+ 
+ void	flow_md_register(const struct flow_md_ops *);
+ 
++/* flow table (if_flow.c) */
++#define FLOW_ADD_OK		0	/* linked */
++#define FLOW_ADD_DUP		1	/* live entry, same key and generation */
++#define FLOW_ADD_FULL		2	/* net.flow.max reached */
++
++struct flow	*flow_lookup(const struct flow_key *);	/* SMR reader */
++struct flow	*flow_alloc(void);
++void		 flow_alloc_free(struct flow *);
++int		 flow_table_add(struct flow *);		/* flow_mtx */
++void		 flow_unlink(struct flow *);		/* flow_mtx */
++void		 flow_count_yield(void);
++
++extern struct mutex	flow_mtx;
++
+ #endif /* _KERNEL */
+ 
+ #endif /* _NET_IF_FLOWVAR_H_ */
