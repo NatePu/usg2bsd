@@ -76,6 +76,21 @@ working T0.2 and all of Phase 1 with its amd64 checks; T2.3 also needs
 T0.5–T0.7, T2.4 needs T0.8, and T2.5 needs G1 and G2. Phase 3 starts only if
 G3 says so.
 
+## Where code lives
+
+- Fork point: OpenBSD -current `c595b86dd3448693481299bfba2dc94134ddfa2f`
+  (2026-10-28). Revisions of the touched files are in `docs/NOTES.md`.
+- The fork is that commit plus the patch series in `patches/` (interim
+  choice until the owner decides otherwise in the fork-hosting issue).
+  `tools/fork-src.sh` recreates the tree in `src/` (gitignored; `FULL=1` and
+  a directory such as `/usr/src` for a full tree on the build host) and
+  applies the series. Commit in `src/` on branch `usg2bsd`, then run
+  `tools/fork-patches.sh` and commit `patches/` here with a checkpoint on
+  the issue.
+- Bench configuration and scripts live in `bench/` (T0.3).
+- Builds and tests run on the OpenBSD build host and the board. macOS can
+  read and edit the tree but cannot build it.
+
 ## Coding standards and kernel constraints
 
 - Follow OpenBSD Kernel Normal Form (`style(9)`).

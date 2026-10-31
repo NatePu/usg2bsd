@@ -11,6 +11,51 @@ Checkout: OpenBSD -current `c595b86dd3448693481299bfba2dc94134ddfa2f`
 (2026-10-28). `if_cnmac.c` 1.93, `if_cnmacvar.h` 1.21, `octciu.c` 1.22,
 `pf.c` 1.1246.
 
+## Fork point revisions (T0.1)
+
+Commit `c595b86dd3448693481299bfba2dc94134ddfa2f`, committed 2026-10-28
+15:07:27 UTC ("rpki-client: move the free after the unlink. duh."). The fork is
+this commit plus the patch series in `patches/` (AGENTS.md, "Where code lives").
+Revisions are each file's `$OpenBSD$` tag, read on 2026-10-31 in a checkout made
+by `tools/fork-src.sh`. They match every revision quoted elsewhere in this file.
+
+Files T0.1 names:
+
+| File | Revision | Date | Author |
+|---|---|---|---|
+| `sys/arch/octeon/dev/if_cnmac.c` | 1.93 | 2026-10-23 | kirill |
+| `sys/arch/octeon/dev/if_cnmacvar.h` | 1.21 | 2026-04-27 | kirill |
+| `sys/arch/octeon/dev/cn30xxpip.c` | 1.12 | 2026-04-27 | kirill |
+| `sys/arch/octeon/dev/cn30xxpow.c` | 1.17 | 2022-12-28 | yasuoka |
+| `sys/arch/octeon/dev/octciu.c` | 1.22 | 2026-10-23 | kirill |
+| `sys/net/pf.c` | 1.1246 | 2026-10-28 | jan |
+| `sys/net/if_vlan.c` | 1.224 | 2025-12-18 | dlg |
+| `sys/net/route.c` | 1.451 | 2026-04-22 | claudio |
+| `sys/netinet/if_ether.c` | 1.278 | 2026-03-23 | jsg |
+
+Other files the fork touches (DESIGN §3):
+
+| File | Revision | Date | Author |
+|---|---|---|---|
+| `sys/arch/octeon/dev/cn30xxpowvar.h` | 1.7 | 2024-05-20 | jsg |
+| `sys/arch/octeon/dev/cn30xxpko.c` | 1.10 | 2025-07-16 | jsg |
+| `sys/arch/octeon/dev/cn30xxfpa.c` | 1.11 | 2024-05-20 | jsg |
+| `sys/arch/octeon/conf/files.octeon` | 1.60 | 2024-11-12 | jsg |
+| `sys/conf/files` | 1.752 | 2026-03-16 | claudio |
+| `sys/conf/GENERIC` | 1.304 | 2025-10-08 | jsg |
+| `sys/sys/mbuf.h` | 1.272 | 2026-10-26 | miod |
+| `sys/sys/socket.h` | 1.108 | 2025-08-04 | guenther |
+| `sys/kern/uipc_domain.c` | 1.70 | 2025-06-12 | deraadt |
+| `sys/net/if.c` | 1.767 | 2026-10-24 | miod |
+| `sys/net/ifq.c` | 1.62 | 2025-07-28 | dlg |
+| `sys/net/if_ethersubr.c` | 1.308 | 2025-12-19 | dlg |
+| `sys/net/rtsock.c` | 1.391 | 2026-04-17 | claudio |
+| `sys/net/pf_if.c` | 1.115 | 2026-10-17 | deraadt |
+| `sys/net/bpf.c` | 1.238 | 2026-09-10 | claudio |
+| `sys/netinet/ip_input.c` | 1.433 | 2026-08-11 | bluhm |
+| `sys/netinet/ip_output.c` | 1.420 | 2026-08-05 | bluhm |
+| `sbin/sysctl/sysctl.c` | 1.270 | 2026-03-31 | deraadt |
+
 ## Correction
 
 The 2026-10-28 entry "N2 resolved: the statekey survives to `cnmac_start`"
