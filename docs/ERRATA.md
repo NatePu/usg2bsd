@@ -13,7 +13,7 @@ Sections 1–3 record the revision-2 review, including its incomplete review pro
 Section 4 records the subsequent revision-3 documentation fixes. Section 5
 records the revision-4 code-readiness review of 2026-10-31. Section 6 records the
 revision-5 doc review and implementation readiness fixes (2026-10-31),
-resolving findings C-1 through C-8 from [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md). Section 7
+resolving findings C-1 through C-8 from [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md). Section 7
 records the move of work tracking to GitHub Issues. No review constitutes
 implementation or hardware validation.
 
@@ -163,7 +163,7 @@ One reviewer re-read the source by hand in a fresh sparse checkout of the same
 commit, together with the Cavium `cvmx-*.h` headers and OpenWrt PR #25645. It
 followed the lens checklist of `.claude/workflows/usg3p-fastpath-doc-review.js`
 without running that multi-agent workflow. Findings, evidence and every doc
-change are logged in [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md) (IDs D-*, N-*, R-*). The
+change are logged in [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md) (IDs D-*, N-*, R-*). The
 revision-3 concurrency protocol (§5.3, §5.7) was re-walked against SMR, taskq
 and timeout barriers and held.
 
@@ -200,7 +200,7 @@ and timeout barriers and held.
 ## 6. Revision 5 — doc review and implementation readiness (2026-10-31)
 
 Addresses the eight findings (C-1 through C-8) and two corrections identified
-during the Revision 4 independent review (logged in [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md)).
+during the Revision 4 independent review (logged in [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md)).
 Source lines refer to OpenBSD -current commit `c595b86dd344`.
 
 | Decision | Resolution | Reason |
@@ -227,13 +227,17 @@ Source lines refer to OpenBSD -current commit `c595b86dd344`.
 The owner made GitHub Issues the source of truth for all work. Task IDs (T\*),
 gates (G\*) and requirements (R\*) keep their meaning: each is now an issue
 titled with its ID, and the pinned roadmap issue maps them. The last versions of
-TASKS.md and JOURNAL.md are in the baseline commit `7f3df21`
-([TASKS.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/TASKS.md), [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md)); the "TASKS" and "JOURNAL" references in
-sections 1–6 mean those files.
+TASKS.md and JOURNAL.md are in the baseline commit `bfcbfa8`
+([TASKS.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/TASKS.md), [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md)); the "TASKS" and "JOURNAL" references in
+sections 1–6 mean those files. The original fork plan,
+`openbsd-usg3p-flow-fastpath-plan (1).txt`, left `main` the same day: it
+describes the pf-state, zero-copy-first design that the reviews in sections
+1–6 replaced, and nothing refers to it. It is in the same commit
+([permalink](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/openbsd-usg3p-flow-fastpath-plan%20%281%29.txt)).
 
 | Decision | Resolution | Reason |
 |---|---|---|
-| D16 | GitHub Issues hold the work plan, status and agent log. TASKS.md and JOURNAL.md are retired. New findings are `finding` issues and still resolve into this file, citing the issue. | Owner instruction, 2026-10-31. One place for status, evidence and discussion; issue checkpoints replace journal entries. |
+| D16 | GitHub Issues hold the work plan, status and agent log. TASKS.md, JOURNAL.md and the original fork plan are retired. New findings are `finding` issues and still resolve into this file, citing the issue. | Owner instruction, 2026-10-31. One place for status, evidence and discussion; issue checkpoints replace journal entries. |
 
 No requirement, design or task content changed. Only references were updated:
 SPEC (status, companion docs, §7.2 heading, §9), DESIGN (status, companion docs,

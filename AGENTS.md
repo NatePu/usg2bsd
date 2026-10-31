@@ -8,7 +8,9 @@ Ubiquiti USG-3P. The specification, design and decision record are in `docs/`.
 All work on this project is planned, tracked and logged in GitHub Issues:
 <https://github.com/NatePu/usg2bsd/issues>. Start at the pinned roadmap issue.
 The former `docs/TASKS.md` (work plan) and `docs/JOURNAL.md` (agent log) are
-retired; their last versions are in the baseline commit `7f3df21`.
+retired; their last versions are in the baseline commit `bfcbfa8`. So is
+the original fork plan (`openbsd-usg3p-flow-fastpath-plan (1).txt`), which
+describes a superseded design: do not work from it.
 
 Rules for every agent:
 

@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BASE = "7f3df21fca550a981714cb808d4af33f652ed123"
+BASE = "bfcbfa81c120b656232740ed69c5172c41b91fd6"
 REPO = "NatePu/usg2bsd"
 OUT = ROOT / "tracking" / "issues.json"
 
@@ -584,7 +584,7 @@ On 2026-10-31 the owner asked for the work plan to move to GitHub: epics, user s
 
 ### Done when
 
-- [ ] Private repository {{REPO_URL}} exists, with the baseline commit `7f3df21` (revision-5 docs as found) and the migration commits pushed.
+- [ ] Private repository {{REPO_URL}} exists, with the baseline commit `bfcbfa8` (revision-5 docs as found) and the migration commits pushed.
 - [ ] Every TASKS.md task (T0.1–T4.5) and gate (G0–G3) is an issue with its wording, phase epic, blockers, requirement links and references.
 - [ ] Every SPEC requirement (R1–R16, plus mode P) is a user story under {{E-REQ}}.
 - [ ] Open items from JOURNAL.md are issues: build host {{C2}}, fork hosting {{C3}}, review workflow {{C4}}.

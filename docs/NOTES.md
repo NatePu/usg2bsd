@@ -4,7 +4,7 @@ Source facts at the fork point. "Verified" = read by hand in the checkout;
 "reviewer" = reported by a source-grounded review agent on 2026-10-29 and
 not re-read by hand. Revision 4 (2026-10-31) re-read the driver, stack and
 kernel facts by hand at the same commit; the evidence is in the append-only
-[JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md) (retired 2026-10-31; new evidence is logged in
+[JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md) (retired 2026-10-31; new evidence is logged in
 [GitHub Issues](https://github.com/NatePu/usg2bsd/issues)) and the new section at the end of this file.
 
 Checkout: OpenBSD -current `c595b86dd3448693481299bfba2dc94134ddfa2f`

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Revision 5, 2026-10-31. Doc review and implementation readiness applied (ERRATA §6); implementation and runtime acceptance pending ([ERRATA.md](ERRATA.md)). Work tracking and agent log: [GitHub Issues](https://github.com/NatePu/usg2bsd/issues) since 2026-10-31 (earlier log: [JOURNAL.md at the baseline commit](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md)). |
+| Status | Revision 5, 2026-10-31. Doc review and implementation readiness applied (ERRATA §6); implementation and runtime acceptance pending ([ERRATA.md](ERRATA.md)). Work tracking and agent log: [GitHub Issues](https://github.com/NatePu/usg2bsd/issues) since 2026-10-31 (earlier log: [JOURNAL.md at the baseline commit](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md)). |
 | Companion docs | [SPEC.md](SPEC.md), [NOTES.md](NOTES.md), [ERRATA.md](ERRATA.md); work items are [GitHub Issues](https://github.com/NatePu/usg2bsd/issues) |
 | Fork point | OpenBSD -current `c595b86dd344` (2026-10-28); `if_cnmac.c` 1.93, `pf.c` 1.1246 |
 
