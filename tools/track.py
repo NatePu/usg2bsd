@@ -37,6 +37,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import unicodedata
 from pathlib import Path
 
@@ -49,6 +50,10 @@ GITHUB_DEFAULT_LABELS = {
 }
 PLACEHOLDER = re.compile(r"\{\{([A-Za-z0-9_.:/\-]+)\}\}")
 MAX_BODY = 65536
+# GitHub allows about 80 content-creating requests a minute; publish makes
+# several hundred, so pace them and wait out a secondary rate limit.
+WRITE_DELAY = float(os.environ.get("TRACK_DELAY", "1.0"))
+RATE_RETRIES = 6
 
 
 def die(msg):
@@ -323,8 +328,17 @@ class GH:
         if self.dry:
             print("DRY:", " ".join(args))
             return {}
-        p = subprocess.run(["gh"] + args, input=json.dumps(payload) if payload is not None else None,
-                           capture_output=True, text=True)
+        for attempt in range(RATE_RETRIES):
+            p = subprocess.run(["gh"] + args, input=json.dumps(payload) if payload is not None else None,
+                               capture_output=True, text=True)
+            time.sleep(WRITE_DELAY)
+            # Only a rate-limit refusal is retried: the request was rejected,
+            # so repeating it cannot create anything twice.
+            if p.returncode in ok_codes or "rate limit" not in p.stderr.lower():
+                break
+            wait = 60 * (attempt + 1)
+            print(f"rate limited; waiting {wait}s", file=sys.stderr, flush=True)
+            time.sleep(wait)
         if p.returncode not in ok_codes:
             raise RuntimeError(f"gh {' '.join(args)} failed ({p.returncode}): {p.stderr.strip()}")
         out = p.stdout.strip()
