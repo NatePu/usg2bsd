@@ -624,6 +624,13 @@
      "body": "Starting T1.2 at the desk (Done-when needs {{C2}}: self-test on an amd64 boot, kstat and ddb output).\n\nPlan, one fork commit:\n- `if_flow.c`: SipHash-2-4 bucket hash over the 12-byte key; `flow_lookup()` for SMR readers; `flow_table_add()` under `flow_mtx` with the DESIGN §5.3 step 7–8 semantics (live same-key same-generation entry = duplicate; a dead or stale same-key entry is unlinked first so it never blocks relearning; `net.flow.max` → full); `flow_unlink()` marks DEAD, unlinks and frees through `smr_call()`; `flow_free()` returns to the pool.\n- Mode transition step 5: flush the table bucket by bucket, then `smr_barrier()`.\n- `flow:0:stats` gets `yield` per {{F3}} (SPEC §6.2 Kstat column, ERRATA E83), with `flow_count_yield()` for the MD RX loop.\n- ddb `show flows` (summary + first entries) and `show flow <addr>` in `db_show_cmds[]` (`sys/ddb/db_command.c`).\n- DIAGNOSTIC boot self-test from `flowattach()`: insert, lookup, absent key, duplicate, stale same-key replacement, unlink, full, plus 64 keys across buckets; prints one result line; no panic on failure.\n\nDesk verification: `tools/kcheck.py` with and without DIAGNOSTIC-relevant code, and a userland harness that runs the table code and the self-test on the Mac against stub SMR/mutex/pool primitives (tests logic, not kernel concurrency).",
      "queued": true,
      "posted": false
+    },
+    {
+     "at": "2026-10-31 10:06 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Implemented at the desk: fork commit `2a5bcb4e`, `patches/0003-T1.2-flow-table-core-ddb-commands-boot-self-test.patch` (repo commit `25cc192`).\n\n- Table: SipHash-2-4 over the 12-byte key into 1024 `SMR_LIST` buckets; `flow_lookup()` (SMR reader, `SMR_ASSERT_CRITICAL`) returns the entry dead or alive for the caller's DEAD/generation checks; `flow_table_add()` under `flow_mtx` implements DESIGN §5.3 steps 7–8 (live same-key same-generation entry → `FLOW_ADD_DUP`; a dead or stale same-key entry is unlinked first; `flow_count >= net.flow.max` → `FLOW_ADD_FULL`; caller keeps ownership on refusal); `flow_unlink()` sets `FLOW_DEAD`, unlinks and frees through `smr_call()`; `flow_alloc()` (PR_NOWAIT|PR_ZERO) / `flow_alloc_free()`.\n- Mode transition step 5 now flushes the table bucket by bucket (short IPL_NET holds; commits, GC and the worker are already stopped) and then `smr_barrier()`. Ring clear still comes with {{T1.6}}.\n- `flow:0:stats` gains `yield` (ERRATA E83, {{F3}}) with `flow_count_yield()` for the MD RX loop.\n- ddb: `show flows [/count]` (mode, generation, count, max, gates, first 32 entries) and `show flow <addr>` (template, rules, per-CPU counters); declared in `ddb/db_interface.h`, table entries under `#if NFLOW > 0`.\n- DIAGNOSTIC boot self-test in `flowattach()`: insert, lookup, absent key, duplicate, stale same-key replacement, unlink, full (limit 2 refuses the third), 64 keys across buckets; ends with a flush; prints `flow: table self-test passed (N checks)` or `FAILED: <check>`; never panics. Refused entries are freed at once and the end flushes the table, so a failing check cannot unlink an entry twice (an earlier draft could; fixed before commit). `FLOW_SELFTEST` builds it without DIAGNOSTIC for the host harness.\n\nVerification here:\n1. `tools/kcheck.py` (amd64, -Werror): `if_flow.c`, `db_command.c`, `uipc_domain.c`, `if_cnmac_flow.c` ok; `db_command.c` and `uipc_domain.c` also ok without flow. `tools/kconfig.sh` amd64 and octeon still configure.\n2. **The code ran:** `tests/flowtable` compiles the real `sys/net/if_flow.c` as arm64 kernel code with stubbed kernel services and runs it on the Mac: `flow: table self-test passed (141 checks)` and `flowtable: 50 checks, 0 failures` (T1.1 defaults, 12 out-of-range writes, EOPNOTSUPP for mode 2 in modes 0 and 3, EBUSY for max in mode 3, transitions bump the generation once and call the MD barrier/scheduling ops, unchanged budget runs no transition, yield rounded by an MD op, mode 0 empties the table and returns every flow to the pool, budget stored without a transition while off, no leaked lock or SMR depth).\n3. **The harness can fail:** four injected bugs each fail it — full check off by one (`self-test FAILED: full`), stale entry treated as duplicate (`FAILED: stale replacement`), EBUSY removed (`FAIL max refused with EBUSY in mode 3`), mode 2 accepted (two failures).\n\nRuling: the start checkpoint planned \"stub SMR/mutex/pool primitives\"; the harness models them single-threaded (SMR callbacks run at `smr_barrier()`), so it proves logic, not concurrency. Concurrency stays with the boot self-test on the VM and {{T1.8}}'s forced interleavings. Cost if wrong: none beyond what the VM run catches.\n\nDone-when not verified (needs {{C2}}): self-test on an amd64 DIAGNOSTIC boot, kstat (`kstat flow:0:stats`) and ddb output on a running kernel.",
+     "queued": true,
+     "posted": false
     }
    ],
    "number": null
@@ -1531,11 +1538,20 @@
    "body": "**Finding (low), found while starting {{T1.2}}.**\n\nSPEC §6.2 names three kstats — per port `cnmacN:0:flow`, global `flow:0:stats`, global `fpa:0:pools` — and then lists all counters in one table without saying which kstat holds which. T1.2 asks for \"global kstat `flow:0:stats` with the SPEC §6.2 names\", which read literally would put per-port hit-path counters (`hit`, `miss`, `sl_*`, …) in the global kstat, while {{T2.1}} creates `cnmacN:0:flow` for them. The `yield` counter is per RX group (one per CPU, shared by all ports), so it cannot be attributed to a port at all.\n\n**Resolution** (SPEC §6.2 gets a \"Kstat\" column; ERRATA E83):\n\n| Kstat | Counters | Owner |\n|---|---|---|\n| `flow:0:stats` (global) | `lrn_*`, `ref_*`, `gen_*`, `gc_*`, `arp_refresh`, `arp_sweep_ms`, `yield` | MI `if_flow.c`; the MD RX loop counts `yield` through an MI helper |\n| `cnmacN:0:flow` (per port) | `hit`, `miss`, `stale`, `sl_check`, `sl_ttl`, `sl_mtu`, `sl_dmac`, `sl_down` (ingress port), `txq_drop` (egress port) | MD, {{T2.1}}/{{T2.5}} |\n| `fpa:0:pools` (global) | `fpa_pkt`, `fpa_wqe`, `fpa_cmd`, `fpa_sg` | MD, {{T2.1}} |\n\nVerification: {{T1.2}} (flow:0:stats contents), {{T2.1}}.\n",
    "parent": "E-P1",
    "blocked_by": [],
-   "state": "open",
-   "state_reason": null,
+   "state": "closed",
+   "state_reason": "completed",
    "pin": false,
-   "comments": [],
-   "number": null
+   "comments": [
+    {
+     "at": "2026-10-31 10:06 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Resolved (repo commit `25cc192`): SPEC §6.2 has a Kstat column and an explanatory sentence; ERRATA E83. `flow:0:stats` in fork commit `2a5bcb4e` ({{T1.2}}) holds the MI counters plus `yield` (with `flow_count_yield()` for the MD loop). The per-port `cnmacN:0:flow` and `fpa:0:pools` kstats are {{T2.1}}'s to build. Closing the finding; the remaining implementation is tracked there.",
+     "queued": true,
+     "posted": false
+    }
+   ],
+   "number": null,
+   "state_synced": false
   }
  ],
  "dependencies_unsupported": false
