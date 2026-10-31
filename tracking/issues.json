@@ -125,38 +125,41 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Session start 2026-10-31 09:10 EDT (Claude Code, Opus 5.5). Request from the owner: populate GitHub with issues, epics and user stories; make GitHub Issues the source of truth for all work; update AGENTS.md and CLAUDE.md; remove Markdown files that are no longer relevant; document everything; checkpoint every action into its issue; then start executing the plan.\n\nDone so far:\n\n1. Read AGENTS.md, CLAUDE.md and docs/ (SPEC, ERRATA, NOTES, JOURNAL, DESIGN, TASKS in full; STOCK_TEST_PLAN outline). Latest journal entry (2026-10-31 09:07 EDT, Antigravity) says revision 5 applied Codex findings C-1..C-8 (ERRATA §6); no unapplied review findings remain. Open items carried forward: build host, persistent fork, stale review workflow, T0.9 yield decision, G0 baseline.\n2. Environment: `gh` is logged in as NatePu (scopes `repo`, `workflow`, `gist`, `read:org`; no `project`, so no Projects board). No `usg2bsd` repository existed. This Mac is macOS arm64 with no OpenBSD host, so no OpenBSD build can run here.\n3. `gh repo create NatePu/usg2bsd --private` was **denied by Claude Code's auto-mode permission classifier** (\"Public Data-Sharing Upload\"). Not retried.\n4. Ruling: stage every issue and every checkpoint comment locally in `tracking/issues.json`; `tools/track.py publish` creates the private repo, pushes, and creates labels, issues, sub-issues, blocked-by links, these queued comments and closures in one resumable run. Why: keeps the owner's instruction (everything documented in its issue) without a GitHub write I am not permitted to make. Cost if wrong: one command for the owner to run; comments carry the time the work was done.\n5. `git init` in the project root; baseline commit `bfcbfa8` holds every file as found, including TASKS.md and JOURNAL.md, before any change.\n6. Generated 71 staged issues from the baseline docs (script kept in the session scratchpad; task, gate and requirement wording copied verbatim): roadmap, 7 epics (phases 0–4, requirements, infrastructure), 4 gates, 38 tasks (T3.3/T3.4 split), 17 user stories (R1–R16 and mode P; R15 and mode P closed as not planned per SPEC §5), 4 chores (this one, build host {{C2}}, fork hosting {{C3}}, review workflow {{C4}}). `tools/track.py check`: ok.\n\nNext: review rendered issues, update AGENTS.md/CLAUDE.md, retire TASKS.md and JOURNAL.md with link fixes, commit.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 09:31 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Migration committed locally as `78b15fb` (on top of baseline `bfcbfa8`).\n\n- **AGENTS.md** rewritten: GitHub Issues are the source of truth; six agent rules (no work without an issue; checkpoint before/during/after with evidence and `Ruling:` lines; clock-stamped, append-only comments; close only on a verified Done-when for the issue's `env:*`; blocked handling; read the issue and open findings before coding); label and `gh` cheat sheet; staging paragraph for `tools/track.py` until publication; documents and precedence (SPEC > ERRATA > DESIGN > NOTES > STOCK_TEST_PLAN, issues do not override SPEC/ERRATA); phase gating; coding standards; discrepancy procedure now opens a `finding` issue instead of a journal entry.\n- **CLAUDE.md**: keeps `@AGENTS.md` and states that GitHub Issues are the source of truth.\n- **Removed** `docs/TASKS.md` and `docs/JOURNAL.md` (their content is in the issues; originals stay in `bfcbfa8`). Kept SPEC, DESIGN, ERRATA, NOTES and STOCK_TEST_PLAN, which are still the spec, design, decision record, source facts and the G0 procedure.\n- **Reference fixes** (exact single-match replacements, 12 edits): SPEC status/companion rows, §7.2 heading, §9; DESIGN status/companion rows, §3.1; ERRATA introduction and two JOURNAL links (now baseline permalinks); NOTES introduction; STOCK_TEST_PLAN scope line. ERRATA §7 added with decision D16. Historical \"TASKS T1.x\" mentions inside ERRATA §§1–6 left as written. Remaining mentions of the two files are only in ERRATA history and D16.\n- `tools/track.py publish --dry-run`: exit 0, planned repo creation, push, 20 labels and 71 issues; working tree unchanged afterwards.\n\nRuling: the old AGENTS.md said \"128-byte alignment on critical structures (`flow_entry`)\"; no `flow_entry` exists, DESIGN §4 defines `struct flow` with `__aligned(CACHELINESIZE)`. Changed the name — a coder would otherwise invent a type. Cost if wrong: none; wording only.\nRuling: kept the old AGENTS.md rule \"Phase 2 is strictly blocked on G0 and T0.9\" and added the TASKS.md entry conditions after it, rather than replacing it with the looser TASKS wording (where T0.9 only gates T2.4). Cost if wrong: T2.1–T2.3 wait for T0.9 a little longer.\n\nRemaining for this issue: publication by the owner, then deleting `tracking/`, `tools/track.py` and the AGENTS.md staging paragraph.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 10:25 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Status at 10:25 EDT: the staged issue set has grown with the work — findings {{F1}}–{{F5}} were added via `tools/track.py new` (F1–F4 closed after their ERRATA/doc fixes, F5 open for owner confirmation). `tools/track.py check` passes. Everything is committed locally; nothing is on GitHub yet because the repository could not be created from this session.\n\nTo publish (owner, from the project root): `! python3 tools/track.py publish` — creates the private repo NatePu/usg2bsd, pushes main (baseline bfcbfa8 onward), creates the 20 labels and every staged issue, links sub-issues and blocked-by relations, posts every queued checkpoint comment in order (each marked as queued, with the time the work was done), closes the closed ones and pins the roadmap. It records progress as it goes and can be re-run after a failure. `--dry-run` shows the plan without writing.\n\nRemaining Done-when items here: publication, then deleting `tracking/`, `tools/track.py` and the AGENTS.md staging paragraph.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 17:22 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Start: link this checkout to GitHub, publish every staged issue, set up the repository.\n\nThe owner created {{REPO_URL}} themselves, public, with a GitHub-made first commit `77458e2` holding a 9-byte `README.md`. They asked me to link the checkout to it, populate the issues, epics and user stories, and create a GitHub Project for the work. They are away and asked me to decide everything without prompting. The checkout moved from `~/Code/scratch/usg2bsd` to `~/Code/usg2bsd`.\n\nPlan:\n1. Set this repository's and the fork's git identity to the owner's GitHub no-reply address, and use gh as the credential helper for this repository only.\n2. Rewrite the author and committer address on every local commit, here and on the fork branch in `src/`, from the owner's private address to the no-reply address. Regenerate `patches/`, whose `From:` lines carry the address.\n3. Graft the local history onto `77458e2` and push `main` (fast-forward).\n4. Remap commit hashes in the staged issues, the docs and two commit messages, and post the old-to-new table here.\n5. Publish: labels, issues, sub-issues, blocked-by links, the queued checkpoints, closures, pinned roadmap.\n6. Set the description and topics, write README.md, retire `openbsd-usg3p-flow-fastpath-plan (1).txt`, then do this issue's cleanup (delete `tracking/`, `tools/track.py` and the AGENTS.md staging paragraph).\n\nRuling: rewrite the commit address before the first push — the repository is public, and the owner's GitHub account keeps its address private (profile email hidden; GitHub's own commit uses the no-reply address). Nothing was pushed before, so no published hash changes — cost if wrong: none for history already shown; the owner can switch back with `git config user.email` for future commits.\nRuling: graft onto the owner's first commit instead of force-pushing over it — keeps their commit, and the push is a plain fast-forward — cost if wrong: the stub README stays in history.\nRuling: keep the repository public as the owner created it; this issue's Done-when said \"private\" only because I was to create it, so its wording now says what exists — cost if wrong: the owner switches visibility in the settings, but what was public may have been copied.\nRuling: GitHub Project — the gh token lacks the `project` scope, and only the owner can grant it in a browser. Everything else is published now; {{C5}} holds `tools/gh-project.sh`, which builds the board in one command once the scope exists — cost if wrong: the board waits for one owner command.\nRuling: no LICENSE — choosing one is the owner's legal decision; {{C6}} recommends ISC, which the new kernel files already carry — cost if wrong: until then others get no rights to reuse the repository's contents.\nRuling: retire `openbsd-usg3p-flow-fastpath-plan (1).txt` from `main` — it is the original fork plan for the pf-state, zero-copy-first design that revision 5 replaced, and nothing links to it; it stays at the baseline commit with a permalink in ERRATA D16 and {{ROADMAP}} — cost if wrong: one `git checkout <baseline> -- <file>`.\nRuling: `tools/track.py publish` now waits 1 s after each write and retries only when GitHub refuses a request for rate limiting, so nothing is created twice. About 330 writes; GitHub allows about 80 content writes a minute — cost if wrong: publishing takes about ten minutes.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 17:24 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "History rewritten before the first push (rulings in the start checkpoint above).\n\n- Author and committer address: every local commit now carries the owner's GitHub no-reply address. Here, commit trees and dates are unchanged except as listed below. On the fork branch in `src/`, nothing else changed: the five trees are identical, checked with `git rev-parse <commit>^{tree}`.\n- Grafted onto the owner's first commit `77458e2`. Every rewritten commit adds its 9-byte `README.md` and otherwise has the same tree, except the 54 `From:` lines of the patch files in history. Each now names the no-reply address, so the private address appears nowhere in the pushed history: `git grep` over every commit finds 0 matches.\n- `patches/` regenerated from the rewritten fork with `tools/fork-patches.sh`: identical to the committed files.\n- Hashes cited in the issues, the docs and two commit messages were remapped: 43 replacements, each one reviewed. Backups of both old histories (git bundles) are kept on the development Mac outside the repository.\n- `openbsd-usg3p-flow-fastpath-plan (1).txt` is retired: ERRATA §7 and D16, AGENTS.md and {{ROADMAP}} link it at the baseline commit.\n\n| Old | New | Commit |\n|---|---|---|\n| `7f3df21` | bfcbfa8 | Import planning docs at revision 5 (baseline before Issues migration) |\n| `34ebdb0` | 78b15fb | Move work tracking to GitHub Issues; retire TASKS.md and JOURNAL.md |\n| `839569f` | d32b3d7 | T0.1: pin the fork as a patch series; record fork-point revisions |\n| `5f3537f` | f19ee09 | tools/kcheck.py: clang syntax check of amd64 kernel sources on the Mac |\n| `7b4ad57` | 4ab1184 | T1.0: build integration patch; config(8) and asm checks; ERRATA E80 |\n| `502c7d9` | 9011fd7 | T1.1: sysctl plumbing patch, acceptance script; ERRATA E81, E82 |\n| `ee88b52` | 9ad0be7 | tracking: T1.1 and F2 checkpoints |\n| `25cc192` | eff6204 | T1.2: table-core patch; host harness runs the real if_flow.c |\n| `0955e50` | f47c08e | tracking: T1.2 and F3 checkpoints |\n| `dd4cee8` | dc2f062 | tools/desk-check.sh: every Mac-side check of the fork in one command |\n| `f40a869` | a0fb34c | T1.3: hook-site patch, placements in NOTES; ERRATA E84-E86 |\n| `0af5e97` | 117c388 | tests/t1.3-generation.sh: T1.3 Done-when as a VM script; tracking |\n| `3a76366` | 415e54e | T0.3: bench artefacts; one measurement bench for G0 and the fork (E87) |\n| `c10d434` | a4cf89d | tracking: T0.3 and F5 checkpoints |\n| `722cd2d` | 13b5508 | tracking: C1 status |\n| `1e08317` | a0b94e1 | Review fix pass: patch 0005; ERRATA E88, E89; finding F6 |\n| `c0e4e00` | 8cbe628 | tracking: T1.3 review checkpoint |\n| `3c6961d` | 0e573be | tracking: roadmap session summary |\n| `bd0613f` | 13df80e | tracking: C1 publication start; stage C5 (project board) and C6 (license) |\n\nFork branch `usg2bsd` in `src/` (not published; see {{C3}}):\n\n| Old | New | Commit |\n|---|---|---|\n| `daa3e47c` | `ac3be62c` | T1.0: build integration for pseudo-device flow |\n| `e61f246b` | `f711d017` | T1.1: net.flow sysctl plumbing |\n| `2a5bcb4e` | `3bc5ed33` | T1.2: flow table core, ddb commands, boot self-test |\n| `f02cfd23` | `433ec60b` | T1.3: generation bump sites, learn gate, admission/bump trace |\n| `5ac0dbee` | `73cc3b9e` | T1.3: review fixes - RTM_ADD in-place bump, gate skip, pfkeyv2 include |",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 1,
+   "id": 6139940682,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "ROADMAP",
@@ -176,10 +179,13 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Session summary, 2026-10-31 09:10–11:05 EDT (Claude Code, Opus 5.5).\n\n**Done at the desk (nothing has run on OpenBSD or the board yet):**\n- Tracking moved to Issues ({{C1}}); TASKS.md and JOURNAL.md retired (kept in baseline `bfcbfa8`).\n- {{T0.1}} pin: fork = `c595b86dd344` + `patches/` (5 patches); revision table in NOTES.\n- {{T0.3}} bench artefacts in `bench/` (one measurement bench for G0 and the fork).\n- Phase 1 {{T1.0}}, {{T1.1}}, {{T1.2}}, {{T1.3}} implemented, checked on the Mac (`tools/desk-check.sh`: clang -Werror with/without flow, OpenBSD config(8), sysctl(8), the real if_flow.c in a harness), and reviewed by a fresh reviewer; its Important findings fixed (patch 0005, {{F6}}).\n- Findings {{F1}}–{{F4}} closed with ERRATA E80–E86; {{F5}} (bench topology) and {{F6}} (deferred review minors) open.\n\n**Blocked on the owner:** build host {{C2}} (every Done-when in Phase 1 and the T0.1 build), fork hosting {{C3}} (interim patch series in use), bench topology confirmation {{F5}}, board access for Phase 0.\n\n**Next:** with the build host, run `tests/t1.1-sysctl.sh` and `tests/t1.3-generation.sh` and the boot self-test, then {{T1.4}}–{{T1.9}}.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 2,
+   "id": 6139940896,
+   "body_synced": true,
+   "pinned": true
   },
   {
    "key": "E-P0",
@@ -195,7 +201,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 3,
+   "id": 6139941127,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "E-P1",
@@ -211,7 +220,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 4,
+   "id": 6139941376,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "E-P2",
@@ -227,7 +239,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 5,
+   "id": 6139941608,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "E-P3",
@@ -244,7 +259,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 6,
+   "id": 6139941824,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "E-P4",
@@ -260,7 +278,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 7,
+   "id": 6139942036,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "E-REQ",
@@ -275,7 +296,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 8,
+   "id": 6139942253,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "E-INFRA",
@@ -291,7 +315,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 9,
+   "id": 6139942476,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "C2",
@@ -310,7 +337,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 10,
+   "id": 6139942690,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "C3",
@@ -326,7 +356,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 11,
+   "id": 6139942919,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "C4",
@@ -342,7 +375,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 12,
+   "id": 6139943148,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "T0.1",
@@ -364,24 +400,27 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Starting T0.1 (desk part). Environment: macOS arm64 development Mac; no OpenBSD build host yet ({{C2}}).\n\nPlan:\n1. Fetch `openbsd/src` at `c595b86dd3448693481299bfba2dc94134ddfa2f` into `src/` (gitignored), shallow and sparse (`sys/`, `sbin/sysctl/`, `usr.sbin/ospfd/`), on a local branch `usg2bsd`.\n2. Record the `$OpenBSD$` revisions of the nine files this task names in a NOTES.md table (some are already listed in NOTES prose: if_cnmac.c 1.93, if_cnmacvar.h 1.21, octciu.c 1.22, pf.c 1.1246, if_vlan.c 1.224, route.c 1.451, if_ether.c 1.278; cn30xxpip.c and cn30xxpow.c are missing).\n3. Set up the fork as a patch series: `patches/` (`git format-patch` against the pinned commit) plus `tools/fork-src.sh` to recreate `src/` and apply it, and document it in AGENTS.md \"Where code lives\".\n\nRuling: the fork lives as a patch series in this repository until the owner decides otherwise in {{C3}}. Why: GitHub forks of public repositories are public (SPEC §2 says private fork); a full private mirror is 1.7 GB against GitHub's 2 GB per-push limit; and the series can be applied to any later fork unchanged. Cost if wrong: re-hosting the series later is one `git am`.\n\nThe second half of Done-when (\"the tree builds unmodified\") needs the build host and is part of {{T0.2}}; this issue stays open until then.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 09:33 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Desk part done; committed as `$(git rev-parse --short HEAD)`.\n\n- `tools/fork-src.sh` fetched `openbsd/src` at `c595b86dd3448693481299bfba2dc94134ddfa2f` (shallow, `--filter=blob:none`, sparse `sys sbin/sysctl usr.sbin/ospfd`) in 25 s, 731 MB, branch `usg2bsd`, tag `fork-base`. `git log -1`: `c595b86dd3448693481299bfba2dc94134ddfa2f 2026-10-28 15:07:27 +0000 rpki-client: move the free after the unlink. duh.` A second run only verifies the base and leaves the tree alone. `tools/fork-patches.sh` regenerates `patches/` from `fork-base..usg2bsd` (no fork commits yet).\n- NOTES.md \"Fork point revisions (T0.1)\": the nine files this task names, from their `$OpenBSD$` tags: if_cnmac.c 1.93, if_cnmacvar.h 1.21, cn30xxpip.c 1.12, cn30xxpow.c 1.17, octciu.c 1.22, pf.c 1.1246, if_vlan.c 1.224, route.c 1.451, if_ether.c 1.278. All seven already quoted in NOTES match; cn30xxpip.c and cn30xxpow.c are new. A second table covers 18 other files the fork touches (DESIGN §3).\n- AGENTS.md \"Where code lives\" documents the layout.\n\nDone-when status: \"NOTES has the table\": done. \"the tree builds unmodified (T0.2)\": open, needs the build host {{C2}}. Not closing.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 09:34 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Correction to the 09:33 checkpoint above: its first line shows an unexpanded `$(git rev-parse --short HEAD)`; the commit is `d32b3d7` (\"T0.1: pin the fork as a patch series; record fork-point revisions\").",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 13,
+   "id": 6139943363,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "T0.2",
@@ -402,7 +441,14 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 14,
+   "id": 6139943601,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.1",
+    "C2"
+   ]
   },
   {
    "key": "T0.3",
@@ -426,17 +472,23 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Starting T0.3 at the desk: writing the bench artefacts into `bench/` (configs for the USG and peers, route setup/teardown, traffic, capture and measurement scripts) from DESIGN §7 and STOCK_TEST_PLAN.md, so G0 ({{T0.4}}) and the later fork runs use identical topology and traffic definitions (SPEC §7.3). The Done-when (adjacency FULL, pings, a results file) needs the board and bench and stays open.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 10:24 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Bench artefacts written at the desk, repo commit `415e54e`; nothing ran on the bench (Done-when needs the board, the two Linux hosts and the bench).\n\n- `bench/env.sh`: the STOCK_TEST_PLAN §2 address plan (10.250.1.0/30, 10.250.2.0/30, test loopbacks 198.18.0.1 and 198.19.0.1, router IDs) plus topology F (10.250.3.0/30 on `vlan21`), overridable from the environment.\n- DUT (OpenBSD): `dut/topo.sh U|V|H|F up|down` (runtime config of STOCK_TEST_PLAN §4/§10, forwarding on, pf off and restored); `dut/routes.sh add|delete` (static host routes to the test addresses); `dut/ospfd.conf.{U,V,H,F}`; `dut/rc.conf.local` (`pf=NO`); `dut/hostname.vlan10/20` (persistent V); `dut/measure.sh LABEL start|stop` (netstat -in/-id/-ie/-s -p ip/-m, vmstat -i, arp -an, ospfctl neighbor and fib, `sysctl net.flow` and the flow/fpa/cnmac kstats when present, `top -b -S -H -s 5` per core, a 10-second neighbour sampler) into `$RESULTS/LABEL/`.\n- Linux hosts: `hosts/setup.sh A|B U|V|H|F up|down`; `hosts/frr-ospfd.{A,B}.conf` (B also advertises the F path); `hosts/tcp.sh server|tcp|udp` (the five iperf3 TCP cases and the UDP sweep of §7, 10 s warm-up, 60 s, 3 trials, JSON per trial); `hosts/trafgen.sh` (frame size incl. FCS → payload = frame − 46 untagged / − 50 tagged, 1 or 8 streams on ports 10000–10007, DUT MAC from the neighbour table); `hosts/sink.sh` (tc flower pref 900 count-and-drop sink); `hosts/capture.sh` (validation capture only).\n\nVerification here: `sh -n` on every script; host scripts run against stand-in `ip`/`trafgen` commands produce the trafgen configs of STOCK_TEST_PLAN §8 (64-byte untagged → `fill(0x42, 18)`, tagged VID 10 → `vlan(id=10)` + `fill(0x42, 14)`, eight streams on sp 10000–10007) and the expected `ip` sequence for B in topology F.\n\nFound and handled first: {{F5}} — DESIGN §7's bench disagreed with STOCK_TEST_PLAN's topology, against SPEC §7.3's same-hosts rule. Ruling: STOCK_TEST_PLAN U/V/H is the one measurement bench, cnmac0 stays management, T2.7 failover uses topology F (second B transit on vlan21). Cost if wrong: re-pointing interface names in `bench/env.sh` and adding a neighbour router's config. Owner confirmation requested in {{F5}}.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 15,
+   "id": 6139943810,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.2"
+   ]
   },
   {
    "key": "T0.4",
@@ -455,7 +507,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 16,
+   "id": 6139944025,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.3"
+   ]
   },
   {
    "key": "T0.5",
@@ -475,7 +533,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 17,
+   "id": 6139944253,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.2"
+   ]
   },
   {
    "key": "T0.6",
@@ -495,7 +559,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 18,
+   "id": 6139944452,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.2"
+   ]
   },
   {
    "key": "T0.7",
@@ -515,7 +585,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 19,
+   "id": 6139944659,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.2"
+   ]
   },
   {
    "key": "T0.8",
@@ -535,7 +611,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 20,
+   "id": 6139944879,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.2"
+   ]
   },
   {
    "key": "T0.9",
@@ -555,7 +637,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 21,
+   "id": 6139945093,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.2"
+   ]
   },
   {
    "key": "G0",
@@ -574,7 +662,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 22,
+   "id": 6139945278,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.4"
+   ]
   },
   {
    "key": "T1.0",
@@ -599,17 +693,24 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Starting T1.0 (code at the desk; Done-when needs the build host {{C2}}).\n\nPlan: in `src/` on branch `usg2bsd`, one fork commit for this task:\n- `sys/conf/files`: `pseudo-device flow` and `file net/if_flow.c flow needs-flag`; `sys/arch/octeon/conf/files.octeon`: `file arch/octeon/dev/if_cnmac_flow.c flow & cnmac`; MI `sys/conf/GENERIC`: `pseudo-device flow`.\n- `sys/net/if_flow.h`: the DESIGN §3.1 hook API under `#if NFLOW > 0` with empty inline stubs otherwise, under `#ifdef _KERNEL` (the FLOWCTL names arrive with {{T1.1}}).\n- `sys/net/if_flow.c`: `flowattach()` setting up pool, buckets, SipHash key, counters, the `flow:0:stats` kstat, gate state, the GC timeout and the single-worker `flow_tq`.\n- `sys/arch/octeon/dev/if_cnmac_flow.c`: placeholder so the octeon config links; the MD glue is {{T2.1}}.\n\nVerification available here: `tools/kcheck.py` (clang `-fsyntax-only`, amd64 flags, `-Werror`) for the new MI files with and without `pseudo-device flow`. It cannot check octeon (no MIPS backend in Apple clang) or link anything.\n\nFound while planning: DESIGN §4 puts `struct flow`/`flow_key` (and §3.1 the MD ops) in `if_flow.h`, which every hook site includes. Filed as {{F1}}; handled by moving them to `if_flowvar.h` with ERRATA E80, before the code.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 09:51 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Implemented at the desk: fork commit `ac3be62c`, exported as `patches/0001-T1.0-build-integration-for-pseudo-device-flow.patch` (repo commit `4ab1184`).\n\nWhat changed in the fork:\n- `sys/conf/files`: `pseudo-device flow` + `file net/if_flow.c flow needs-flag`; `sys/conf/GENERIC`: `pseudo-device flow`; `sys/arch/octeon/conf/files.octeon`: `file arch/octeon/dev/if_cnmac_flow.c flow & cnmac`.\n- `sys/net/if_flow.h`: the DESIGN §3.1 hook API (`flow_gen_bump`, `flow_gate_update`, `flow_fwd_mark`, `flow_fwd_clear`, `flow_learn_request`, `flow_sysctl`, `flowattach`) under `#ifdef _KERNEL`, real prototypes for `NFLOW > 0` and empty `static inline` stubs otherwise (`flow_sysctl` stub returns EOPNOTSUPP). It `#error`s if `\"flow.h\"` was not included first, so a hook site cannot silently compile to stubs in a flow kernel.\n- `sys/net/if_flowvar.h` (ERRATA E80, {{F1}}): `struct flow_key`, `struct flow` with `f_ctr[FLOW_NCPU]` lines, `FLOW_MODE_*`, `struct flow_md_ops`, `flow_md_register()`.\n- `sys/net/if_flow.c`: `flowattach()` initialises the pool (`CACHELINESIZE`-aligned, IPL_NET), the 1024 SMR buckets, the SipHash key, `counters_alloc()` for the 28 global counters, kstat `flow:0:stats` (28 counters + `arp_sweep_ms`), closed gates (`commit_enabled`, `gc_enabled`, `accepting`, `flow_learn_gate` = 0), an MPSAFE GC timeout and the single-worker MPSAFE IPL_NET `flow_tq`. Learn/GC handlers are empty until {{T1.6}}/{{T1.7}}.\n\nVerification run here (macOS; the Done-when itself is still open):\n1. **OpenBSD config(8)** from the pinned tree, built on the Mac (`tools/kconfig.sh`): amd64 and octeon GENERIC.MP configure with flow — `flow.h` = `#define NFLOW 1`, `{ flowattach, 1 }` in `ioconf.c`, `net/if_flow.c` (plus `arch/octeon/dev/if_cnmac_flow.c` on octeon) in the Makefile. With `pseudo-device flow` removed from a copy of the MI GENERIC: `NFLOW 0`, no flow sources, no `flowattach` (the only matches are `pflowattach`).\n2. **clang -fsyntax-only, amd64 kernel flags, -Werror** (`tools/kcheck.py`): `if_flow.c` and `if_cnmac_flow.c` ok. A hook-site test unit calling all six hooks: ok with and without flow. The same unit without `#include \"flow.h\"`: fails with the intended `#error`. First attempt failed `-Wunused-variable` on `flow_tbl`/`flow_count` — fixed by the explicit bucket initialisation T1.0 asks for.\n3. **Generated code** (`kcheck.py --asm`, -O2 amd64): the hook-site function contains no call at all without flow, and the five `flow_*` calls with it — the hooks compile to nothing.\n4. **Patch round trip**: `patches/*.patch` applied to `fork-base` reproduces the fork tree exactly (tree `25ad0cde9f46`).\n\nNot verified (needs {{C2}}): compiling and linking amd64 and octeon GENERIC.MP with and without flow, octeon compilation of any file (Apple clang has no MIPS backend), boot. Done-when stays open.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 23,
+   "id": 6139945520,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T0.1",
+    "C2"
+   ]
   },
   {
    "key": "T1.1",
@@ -633,17 +734,23 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Starting T1.1 at the desk (Done-when needs {{C2}}).\n\nPlan, one fork commit:\n- `sys/sys/socket.h`: `pseudo_AF_FLOW 37`, `AF_MAX 38`, `PF_FLOW`; `CTL_NET_NAMES` gets `{ 0, 0 }` for AF_FRAME (36) and `{ \"flow\", CTLTYPE_NODE }` (37).\n- `sys/net/if_flow.h`: `FLOWCTL_*` and `FLOWCTL_NAMES` outside `_KERNEL`.\n- `sys/kern/uipc_domain.c`: `PF_FLOW` branch in `net_sysctl()` inside `#ifndef SMALL_KERNEL`, under `#if NFLOW > 0`, like `PF_PFLOW`/`PF_PIPEX`.\n- `sys/net/if_flow.c`: `flow_sysctl()` with `sysctl_int_bounded()`; `mode` through a setter serialised by `flow_ctl_lock` that runs the DESIGN §5.7 transition (steps whose objects exist now; table flush and ring clear join with {{T1.2}} and {{T1.6}}, the full race tests are {{T1.8}}); `max` only in mode 0 (EBUSY); mode 2 EOPNOTSUPP before anything changes; budget/yield changes in an active mode re-run the transition, in mode 0 they are only stored; `yield` stored rounded.\n- `sbin/sysctl/sysctl.c`: `flowname`/`flowlist`, `PF_FLOW` case and `sysctl_flow()` (pattern of bpf/pipex).\n\nTwo interface gaps found and handled first as {{F2}}: no MD op can report the rounded yield (new pure `fmo_yield_round()`, ERRATA E81, DESIGN §3.1), and SPEC §6.1 had no bounds for idle/budget/yield (ERRATA E82, SPEC §6.1 now 1–3600 s, 0–4096, 0–100000 µs).\n\nSide observation: at the fork point sysctl(8) declares `netname[] = CTL_NET_NAMES` with 36 entries but bounds the list by `NET_MAXID` = `AF_MAX` = 37 (`sbin/sysctl/sysctl.c:113,149`), so lookups read one element past the array. The placeholder this task adds makes it 38 entries for `AF_MAX` 38.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 09:58 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Implemented at the desk: fork commit `f711d017`, `patches/0002-T1.1-net.flow-sysctl-plumbing.patch` (repo commit `9011fd7`).\n\n- `sys/sys/socket.h`: `pseudo_AF_FLOW 37`, `AF_MAX 38`, `PF_FLOW`; `CTL_NET_NAMES` + `{ 0, 0 }` (AF_FRAME 36) + `{ \"flow\", CTLTYPE_NODE }` (37). Checked every `AF_MAX` user: `rtable.c:55` sizes `af2idx[AF_MAX+1]`, `if.c:1672`/`rtsock.c:811-813` bound checks, `rtsock.c:2231,2264` and `route.c:1893` loop over families and skip unsupported ones (as for pipex 35/frame 36); `sys/mount.h` includes socket.h \"for AF_MAX\" but no longer uses it, kernel-only. No ABI-visible structure changes size.\n- `net/if_flow.h`: `FLOWCTL_MODE..DEBUG`, `FLOWCTL_MAXID`, `FLOWCTL_NAMES` outside `_KERNEL`.\n- `kern/uipc_domain.c`: `PF_FLOW` → `flow_sysctl()` inside `#ifndef SMALL_KERNEL`, `#if NFLOW > 0`.\n- `net/if_flow.c`: `flow_sysctl()`; bounds mode 0–3, max 1–4096, idle 1–3600, budget 0–4096, yield 0–100000, debug 0–1 (`sysctl_int_bounded`, EINVAL). Mode: 2 → EOPNOTSUPP before any change; otherwise `flow_set_mode()` takes `flow_ctl_lock` and runs `flow_transition()` = DESIGN §5.7 steps 1–4, 6, 7 (close gates and publish 0, bump under `flow_mtx`+`flow_ring_mtx`, `timeout_del_barrier`, MD RX barrier + `smr_barrier`, both `taskq_del_barrier`s, MD `fmo_sched_set`, reopen + publish with `membar_producer` + rearm GC). Step 5 (empty table and ring) is a marked gap until {{T1.2}}/{{T1.6}}. `max`: EBUSY unless mode 0 (an unchanged value is accepted). `budget`/`yield`: stored while off; in an active mode re-run the transition with the requested mode; unchanged values do nothing. `yield` stored after `fmo_yield_round()` (identity without MD). `flow_gen_bump()` implemented (membar, atomic increment, `gen_<src>` counter; safe before `flowattach()` because NICs attach first, `init_main.c:342` vs `:380`).\n- `sbin/sysctl/sysctl.c`: `flowname`/`flowlist`, `PF_FLOW` case, `sysctl_flow()` (bpf pattern).\n\nVerification here:\n1. `tools/kcheck.py` (amd64, -Werror): `if_flow.c`, `uipc_domain.c` (with and without flow), `if_cnmac_flow.c` ok.\n2. `tools/kconfig.sh amd64`: still configures, `if_flow.c` in the Makefile.\n3. Userland `sysctl.c` against the tree's own headers (`include/` added to the sparse checkout): fork and stock produce the same single diagnostic (a pre-existing `-Wvisibility` warning in `in_pcb.h:171`); a deliberate typo in `sysctl_flow()` is caught, so the check compiles the new code.\n4. **`tests/t1.1-sysctl.sh`**: the Done-when as a script for the amd64 VM — lists all six knobs; 12 out-of-range writes refused with the value unchanged and 11 in-range writes accepted; `max` EBUSY in mode 3; mode 2 refused in modes 3, 1, 0 with the mode unchanged; budget change in mode 0 leaves `gen_sysctl` alone, budget and yield changes in mode 3 bump it (transition ran); yield reads back. sysctl(8) exits 0 when a write fails (`sysctl.c:894-908` only warns), so the script checks the message and the value read back. Not run: needs the VM ({{C2}}).\n\nDone-when not verified (needs {{C2}}). Remaining dependency: the transition's step 5 lands with {{T1.2}} and {{T1.6}}.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 24,
+   "id": 6139945748,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.0"
+   ]
   },
   {
    "key": "T1.2",
@@ -667,17 +774,23 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Starting T1.2 at the desk (Done-when needs {{C2}}: self-test on an amd64 boot, kstat and ddb output).\n\nPlan, one fork commit:\n- `if_flow.c`: SipHash-2-4 bucket hash over the 12-byte key; `flow_lookup()` for SMR readers; `flow_table_add()` under `flow_mtx` with the DESIGN §5.3 step 7–8 semantics (live same-key same-generation entry = duplicate; a dead or stale same-key entry is unlinked first so it never blocks relearning; `net.flow.max` → full); `flow_unlink()` marks DEAD, unlinks and frees through `smr_call()`; `flow_free()` returns to the pool.\n- Mode transition step 5: flush the table bucket by bucket, then `smr_barrier()`.\n- `flow:0:stats` gets `yield` per {{F3}} (SPEC §6.2 Kstat column, ERRATA E83), with `flow_count_yield()` for the MD RX loop.\n- ddb `show flows` (summary + first entries) and `show flow <addr>` in `db_show_cmds[]` (`sys/ddb/db_command.c`).\n- DIAGNOSTIC boot self-test from `flowattach()`: insert, lookup, absent key, duplicate, stale same-key replacement, unlink, full, plus 64 keys across buckets; prints one result line; no panic on failure.\n\nDesk verification: `tools/kcheck.py` with and without DIAGNOSTIC-relevant code, and a userland harness that runs the table code and the self-test on the Mac against stub SMR/mutex/pool primitives (tests logic, not kernel concurrency).",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 10:06 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Implemented at the desk: fork commit `3bc5ed33`, `patches/0003-T1.2-flow-table-core-ddb-commands-boot-self-test.patch` (repo commit `eff6204`).\n\n- Table: SipHash-2-4 over the 12-byte key into 1024 `SMR_LIST` buckets; `flow_lookup()` (SMR reader, `SMR_ASSERT_CRITICAL`) returns the entry dead or alive for the caller's DEAD/generation checks; `flow_table_add()` under `flow_mtx` implements DESIGN §5.3 steps 7–8 (live same-key same-generation entry → `FLOW_ADD_DUP`; a dead or stale same-key entry is unlinked first; `flow_count >= net.flow.max` → `FLOW_ADD_FULL`; caller keeps ownership on refusal); `flow_unlink()` sets `FLOW_DEAD`, unlinks and frees through `smr_call()`; `flow_alloc()` (PR_NOWAIT|PR_ZERO) / `flow_alloc_free()`.\n- Mode transition step 5 now flushes the table bucket by bucket (short IPL_NET holds; commits, GC and the worker are already stopped) and then `smr_barrier()`. Ring clear still comes with {{T1.6}}.\n- `flow:0:stats` gains `yield` (ERRATA E83, {{F3}}) with `flow_count_yield()` for the MD RX loop.\n- ddb: `show flows [/count]` (mode, generation, count, max, gates, first 32 entries) and `show flow <addr>` (template, rules, per-CPU counters); declared in `ddb/db_interface.h`, table entries under `#if NFLOW > 0`.\n- DIAGNOSTIC boot self-test in `flowattach()`: insert, lookup, absent key, duplicate, stale same-key replacement, unlink, full (limit 2 refuses the third), 64 keys across buckets; ends with a flush; prints `flow: table self-test passed (N checks)` or `FAILED: <check>`; never panics. Refused entries are freed at once and the end flushes the table, so a failing check cannot unlink an entry twice (an earlier draft could; fixed before commit). `FLOW_SELFTEST` builds it without DIAGNOSTIC for the host harness.\n\nVerification here:\n1. `tools/kcheck.py` (amd64, -Werror): `if_flow.c`, `db_command.c`, `uipc_domain.c`, `if_cnmac_flow.c` ok; `db_command.c` and `uipc_domain.c` also ok without flow. `tools/kconfig.sh` amd64 and octeon still configure.\n2. **The code ran:** `tests/flowtable` compiles the real `sys/net/if_flow.c` as arm64 kernel code with stubbed kernel services and runs it on the Mac: `flow: table self-test passed (141 checks)` and `flowtable: 50 checks, 0 failures` (T1.1 defaults, 12 out-of-range writes, EOPNOTSUPP for mode 2 in modes 0 and 3, EBUSY for max in mode 3, transitions bump the generation once and call the MD barrier/scheduling ops, unchanged budget runs no transition, yield rounded by an MD op, mode 0 empties the table and returns every flow to the pool, budget stored without a transition while off, no leaked lock or SMR depth).\n3. **The harness can fail:** four injected bugs each fail it — full check off by one (`self-test FAILED: full`), stale entry treated as duplicate (`FAILED: stale replacement`), EBUSY removed (`FAIL max refused with EBUSY in mode 3`), mode 2 accepted (two failures).\n\nRuling: the start checkpoint planned \"stub SMR/mutex/pool primitives\"; the harness models them single-threaded (SMR callbacks run at `smr_barrier()`), so it proves logic, not concurrency. Concurrency stays with the boot self-test on the VM and {{T1.8}}'s forced interleavings. Cost if wrong: none beyond what the VM run catches.\n\nDone-when not verified (needs {{C2}}): self-test on an amd64 DIAGNOSTIC boot, kstat (`kstat flow:0:stats`) and ddb output on a running kernel.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 25,
+   "id": 6139945942,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.1"
+   ]
   },
   {
    "key": "T1.3",
@@ -701,17 +814,23 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Process note: this task was started at about 10:10 EDT without the start checkpoint AGENTS.md rule 2 requires; this first comment is written after the work. The steps are below in order.\n\nImplemented at the desk: fork commit `433ec60b`, `patches/0004-T1.3-generation-bump-sites-learn-gate-admission-bump.patch` (repo commit `a0fb34c`).\n\n- **40 hooks in 16 files**, each under `#if NFLOW > 0`, each placed after the state change it reports (or inside the lock the commit's own check takes: `arpinvalidate()` under `arp_mtx`). Exact fork-tree lines are in NOTES \"T1.3 generation hook placements\": gen_rt (route add except RTM_RESOLVE, delete, RTM_CHANGE, link-state walk, PMTU CAS and reset), gen_arp (`arpcache` changed, `arpinvalidate` with an address), gen_if (`if_linkstate`, `if_setlladdr`, SIOCSIFMTU, SIOCSIFRDOMAIN, SIOCSIFXFLAGS monitor change, `in_ifinit`, `in_purgeaddr`, `ether_brport_set/clr`, aggr and trunk `ac_trport` incl. both SIOCSTRUNK loops), gen_vlan (destroy, up, down, `vlan_link_state` synchronously, vnetid, parent set/del, tx/rx prio), gen_bpf (attach/detach), gen_sysctl (new explicit IPCTL_FORWARDING/IPCTL_SENDREDIRECTS cases with the `ipctl_vars` bounds, multipath), gen_pf (DIOCSTART/STOP, `pfi_xcommit`), gen_ipsec (policy add). `flow_gate_update()` at forwarding, DIOCSTART/STOP, `pfi_xcommit` (with skip-any computed in its walk), IPsec add and delete.\n- **Learn gate**: set only for forwarding == 1, `ipsec_in_use` == 0, pf stopped or any kif skipping; recomputed under the leaf `flow_gate_mtx` (ERRATA E86).\n- **DIAGNOSTIC admission/bump trace** (for {{T2.7}}): 4096-entry ring (time, generation, kind, cpu, packet id); every bump records itself; `flow_trace_admit(id, gen)` for the MD hit path; ddb `show flowtrace [/count]`; raw kstat `flow:0:trace`.\n- Findings {{F4}} (ERRATA E84–E86): tcp_subr.c needs no own hook and five more `rt_mtu` writers need none (analysis in NOTES); RTM_CHANGE bumps for any change attempted on a found route, since it can fail after a partial in-place edit; the SIOCSTRUNK clear/re-set window; the gate race.\n\nVerification here:\n1. `tools/desk-check.sh` PASS: all 19 touched kernel files compile with -Werror (amd64) with flow, 18 without; config(8) amd64/octeon; sysctl(8) no new diagnostics; harness `flow: table self-test passed (141 checks)`, `flowtable: 54 checks, 0 failures` (new: the learn gate is 1 only for forwarding 1, not 0 or 2). The first run exposed that desk-check only looked at committed fork changes; fixed to diff the working tree.\n2. **Hooks compile to nothing without flow, shown on generated code:** each of the 16 files compiled at -O2 for amd64 with `NFLOW 0`, compared with the same file at `fork-base` (`__LINE__` and paths neutralised): 13 byte-identical; `route.c`, `rtsock.c`, `if.c` differ only in six `AF_MAX` comparison constants from {{T1.1}} (37→38).\n3. Exact placements recorded in NOTES (part of the Done-when).\n\nNot verified (needs {{C2}}): the per-action `gen_*` counter movements and the gate on a running amd64 kernel. `tests/t1.3-generation.sh` (next commit) scripts them.",
      "queued": true,
-     "posted": false
+     "posted": true
     },
     {
      "at": "2026-10-31 11:01 EDT",
      "author": "Claude Code (Opus 5.5)",
      "body": "Final review and fix pass (ledger: {{F6}}). A fresh reviewer agent read patches 0001–0004 against the docs: 1 Important, 5 Minor, 0 Critical. Fixed in fork commit `73cc3b9e` (`patches/0005-T1.3-review-fixes-RTM_ADD-in-place-bump-gate-skip-pf.patch`), docs in repo commit `a0b94e1`:\n\n1. **RTM_ADD edits routes in place without a bump** (Important). Verified in the source before fixing: RTM_ADD on a cached L2 entry does `goto change` (`rtsock.c:938-947`, allowed by `route_arp_conflict()` `:1363-1365`), and a plain RTM_ADD calls `rtm_setmetrics()` after `rtrequest()` and NET_UNLOCK. Fix: the end-of-`rtm_output()` hook bumps for RTM_ADD and RTM_CHANGE. ERRATA E88.\n2. **`<net/if_flow.h>` inside `#if NPF > 0` in `pfkeyv2.c`** — my insertion script put it after the first `<net/if.h>`, which there is inside the pf block; an audit of all 16 hook files found no other include inside a conditional. Re-graded Minor: stock `pfkeyv2.c` already fails without pf (`rtable_l2`, `rtable_exists` undeclared). **RED→GREEN on the Mac:** new `kcheck.py --no-dev pf`: before, `pfkeyv2.c:2010` `flow_gen_bump` undeclared plus the two stock errors; after, only the two stock errors.\n3. **Learn gate never closed by pf with the default pf.conf** (re-graded Important). Verified: group kifs have no ifnet and `lo0`'s kif inherits `set skip on lo`. Fix: `skip_any` counts only ifnet-backed IFT_ETHER kifs (group flags are already folded into them); `pf_if.c` gains `<net/if_types.h>`. ERRATA E89.\n\nAfter the fixes: `tools/desk-check.sh` PASS (amd64 -Werror with and without flow, config(8), sysctl(8), harness 141 + 54 checks); `pf_if.c` and `pfkeyv2.c` still compile without flow to exactly the stock assembly. NOTES placements updated (rtsock.c:1207, pf_if.c:965–966, pfkeyv2.c:2011–2012).\n\nRuling: fixes 1 and 3 have no failing test on the Mac — the harness does not run rtsock or pf code. `tests/t1.3-generation.sh` now has the cases that must fail on a patch-0004 kernel and pass with 0005 (`arp -s` on a cached next hop with `GW=`, `route add -mtu`) and the ddb check that pf with only `set skip on lo` closes the gate. Cost if wrong: the VM run finds it.\nDeferred minors (on {{F6}}): broadcast-address changes not bumped; `yield` may exceed its bound after rounding; reads take the control lock exclusively without RW_INTR; `pfi_xcommit()` bumps on group changes even with pf stopped (performance).",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 26,
+   "id": 6139946125,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.2"
+   ]
   },
   {
    "key": "T1.4",
@@ -730,7 +849,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 27,
+   "id": 6139946339,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.3"
+   ]
   },
   {
    "key": "T1.5",
@@ -749,7 +874,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 28,
+   "id": 6139946553,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.4"
+   ]
   },
   {
    "key": "T1.6",
@@ -768,7 +899,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 29,
+   "id": 6139946735,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.5"
+   ]
   },
   {
    "key": "T1.7",
@@ -787,7 +924,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 30,
+   "id": 6139946969,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.6"
+   ]
   },
   {
    "key": "T1.8",
@@ -806,7 +949,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 31,
+   "id": 6139947169,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.7"
+   ]
   },
   {
    "key": "T1.9",
@@ -825,7 +974,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 32,
+   "id": 6139947416,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T1.4"
+   ]
   },
   {
    "key": "T2.1",
@@ -847,7 +1002,15 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 33,
+   "id": 6139947642,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G0",
+    "T1.8",
+    "T1.9"
+   ]
   },
   {
    "key": "T2.2",
@@ -867,7 +1030,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 34,
+   "id": 6139947840,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.1"
+   ]
   },
   {
    "key": "T2.3",
@@ -890,7 +1059,16 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 35,
+   "id": 6139948069,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.2",
+    "T0.5",
+    "T0.6",
+    "T0.7"
+   ]
   },
   {
    "key": "G1",
@@ -909,7 +1087,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 36,
+   "id": 6139948285,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.3"
+   ]
   },
   {
    "key": "T2.4",
@@ -931,7 +1115,15 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 37,
+   "id": 6139948507,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G1",
+    "T0.8",
+    "T0.9"
+   ]
   },
   {
    "key": "G2",
@@ -950,7 +1142,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 38,
+   "id": 6139948729,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.4"
+   ]
   },
   {
    "key": "T2.5",
@@ -971,7 +1169,14 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 39,
+   "id": 6139948945,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G1",
+    "G2"
+   ]
   },
   {
    "key": "T2.6",
@@ -991,7 +1196,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 40,
+   "id": 6139949175,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.5"
+   ]
   },
   {
    "key": "T2.7",
@@ -1011,7 +1222,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 41,
+   "id": 6139949394,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.5"
+   ]
   },
   {
    "key": "T2.8",
@@ -1031,7 +1248,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 42,
+   "id": 6139949622,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.5"
+   ]
   },
   {
    "key": "T2.9",
@@ -1051,7 +1274,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 43,
+   "id": 6139949865,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.5"
+   ]
   },
   {
    "key": "T2.10",
@@ -1071,7 +1300,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 44,
+   "id": 6139950074,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.5"
+   ]
   },
   {
    "key": "G3",
@@ -1094,7 +1329,17 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 45,
+   "id": 6139950288,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T2.6",
+    "T2.7",
+    "T2.8",
+    "T2.9",
+    "T2.10"
+   ]
   },
   {
    "key": "T3.1",
@@ -1115,7 +1360,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 46,
+   "id": 6139950510,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G3"
+   ]
   },
   {
    "key": "T3.2",
@@ -1136,7 +1387,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 47,
+   "id": 6139950749,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T3.1"
+   ]
   },
   {
    "key": "T3.3",
@@ -1158,7 +1415,14 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 48,
+   "id": 6139950965,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T3.2",
+    "T0.6"
+   ]
   },
   {
    "key": "T3.4",
@@ -1179,7 +1443,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 49,
+   "id": 6139951208,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "T3.3"
+   ]
   },
   {
    "key": "T4.1",
@@ -1199,7 +1469,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 50,
+   "id": 6139951437,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G3"
+   ]
   },
   {
    "key": "T4.2",
@@ -1219,7 +1495,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 51,
+   "id": 6139951648,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G3"
+   ]
   },
   {
    "key": "T4.3",
@@ -1239,7 +1521,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 52,
+   "id": 6139951873,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G3"
+   ]
   },
   {
    "key": "T4.4",
@@ -1258,7 +1546,13 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 53,
+   "id": 6139952081,
+   "body_synced": true,
+   "parent_linked": true,
+   "blocked_linked": [
+    "G3"
+   ]
   },
   {
    "key": "T4.5",
@@ -1275,7 +1569,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 54,
+   "id": 6139952324,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R1",
@@ -1290,7 +1587,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 55,
+   "id": 6139952545,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R2",
@@ -1305,7 +1605,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 56,
+   "id": 6139952753,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R3",
@@ -1320,7 +1623,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 57,
+   "id": 6139953011,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R4",
@@ -1335,7 +1641,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 58,
+   "id": 6139953200,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R5",
@@ -1350,7 +1659,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 59,
+   "id": 6139953448,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R6",
@@ -1365,7 +1677,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 60,
+   "id": 6139953657,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R7",
@@ -1380,7 +1695,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 61,
+   "id": 6139953864,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R8",
@@ -1395,7 +1713,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 62,
+   "id": 6139954064,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R9",
@@ -1410,7 +1731,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 63,
+   "id": 6139954296,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R10",
@@ -1425,7 +1749,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 64,
+   "id": 6139954545,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R11",
@@ -1440,7 +1767,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 65,
+   "id": 6139954789,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R12",
@@ -1455,7 +1785,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 66,
+   "id": 6139955003,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R13",
@@ -1470,7 +1803,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 67,
+   "id": 6139955217,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R14",
@@ -1485,7 +1821,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 68,
+   "id": 6139955461,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "R15",
@@ -1501,7 +1840,11 @@
    "state_reason": "not_planned",
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 69,
+   "id": 6139955690,
+   "body_synced": true,
+   "parent_linked": true,
+   "state_synced": true
   },
   {
    "key": "R16",
@@ -1516,7 +1859,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 70,
+   "id": 6139955919,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "MODEP",
@@ -1532,7 +1878,11 @@
    "state_reason": "not_planned",
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 71,
+   "id": 6139956124,
+   "body_synced": true,
+   "parent_linked": true,
+   "state_synced": true
   },
   {
    "key": "F1",
@@ -1554,11 +1904,14 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Resolved in documentation and code (repo commit `4ab1184`): ERRATA §8 E80 added; DESIGN §3 components row, the §3.1 MD-ops banner and the §4 banner now name `sys/net/if_flowvar.h`. Fork commit `ac3be62c` ({{T1.0}}) follows it: `if_flow.h` holds only the hook API, `if_flowvar.h` the structures and MD ops. A hook-site test unit that includes only `flow.h` and `<net/if_flow.h>` compiles with and without flow (`tools/kcheck.py`). The real-build confirmation is part of {{T1.0}}'s Done-when. Closing.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null,
-   "state_synced": false
+   "number": 72,
+   "state_synced": true,
+   "id": 6139956326,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "F2",
@@ -1580,11 +1933,14 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Resolved (repo commit `9011fd7`): ERRATA E81 (DESIGN §3.1 adds `u_int (*fmo_yield_round)(u_int)`) and E82 (SPEC §6.1 bounds: idle 1–3600 s, budget 0–4096, yield 0–100000 µs, yield default 0 until T0.9). Code follows in fork commit `f711d017` ({{T1.1}}): `struct flow_md_ops` has the op; the yield setter stores the rounded value; `flow_sysctl()` enforces the bounds. Runtime confirmation is part of {{T1.1}}'s Done-when (`tests/t1.1-sysctl.sh`). Closing.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null,
-   "state_synced": false
+   "number": 73,
+   "state_synced": true,
+   "id": 6139956558,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "F3",
@@ -1606,11 +1962,14 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Resolved (repo commit `eff6204`): SPEC §6.2 has a Kstat column and an explanatory sentence; ERRATA E83. `flow:0:stats` in fork commit `3bc5ed33` ({{T1.2}}) holds the MI counters plus `yield` (with `flow_count_yield()` for the MD loop). The per-port `cnmacN:0:flow` and `fpa:0:pools` kstats are {{T2.1}}'s to build. Closing the finding; the remaining implementation is tracked there.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null,
-   "state_synced": false
+   "number": 74,
+   "state_synced": true,
+   "id": 6139956785,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "F4",
@@ -1632,11 +1991,14 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Resolved in repo commit `a0fb34c` (DESIGN §5.4 rows for RTM_CHANGE, PMTU and trunk; §5.8 gate row; ERRATA E84–E86; NOTES analysis) and implemented in fork commit `433ec60b` ({{T1.3}}). Closing.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null,
-   "state_synced": false
+   "number": 75,
+   "state_synced": true,
+   "id": 6139957006,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "F5",
@@ -1659,10 +2021,13 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Resolved in docs (DESIGN §7 bench table, ERRATA E87) and implemented in `bench/` (repo commit `415e54e`, {{T0.3}}). Left open with `needs-owner` until the owner confirms topology F instead of a separate neighbour router on cnmac0.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 76,
+   "id": 6139957215,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "F6",
@@ -1683,10 +2048,13 @@
      "author": "Claude Code (Opus 5.5)",
      "body": "Fix pass done for findings 1–3 in fork commit `73cc3b9e` (`patches/0005-T1.3-review-fixes-...`); docs (ERRATA E88/E89, DESIGN §3.1/§5.3/§5.4, NOTES) in the next repo commit. Evidence on {{T1.3}}.",
      "queued": true,
-     "posted": false
+     "posted": true
     }
    ],
-   "number": null
+   "number": 77,
+   "id": 6139957448,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "C5",
@@ -1703,7 +2071,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 78,
+   "id": 6139957679,
+   "body_synced": true,
+   "parent_linked": true
   },
   {
    "key": "C6",
@@ -1719,7 +2090,10 @@
    "state_reason": null,
    "pin": false,
    "comments": [],
-   "number": null
+   "number": 79,
+   "id": 6139957895,
+   "body_synced": true,
+   "parent_linked": true
   }
  ],
  "dependencies_unsupported": false
