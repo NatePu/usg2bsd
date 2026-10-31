@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| Status | Revision 5, 2026-10-31. Doc review and implementation readiness applied (ERRATA §6); implementation and runtime acceptance remain pending. Changes and reasons: [ERRATA.md](ERRATA.md). Review log: [JOURNAL.md](JOURNAL.md) (append-only). |
-| Companion docs | [DESIGN.md](DESIGN.md) (how), [TASKS.md](TASKS.md) (work), [NOTES.md](NOTES.md) (source facts at the fork point), [JOURNAL.md](JOURNAL.md) (append-only review log) |
+| Status | Revision 5, 2026-10-31. Doc review and implementation readiness applied (ERRATA §6); implementation and runtime acceptance remain pending. Changes and reasons: [ERRATA.md](ERRATA.md). Work tracking and agent log: [GitHub Issues](https://github.com/NatePu/usg2bsd/issues) since 2026-10-31 (earlier log: [JOURNAL.md at the baseline commit](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md)). |
+| Companion docs | [DESIGN.md](DESIGN.md) (how), [GitHub Issues](https://github.com/NatePu/usg2bsd/issues) (work: tasks T\*, gates G\*, requirement stories R\*), [NOTES.md](NOTES.md) (source facts at the fork point), [ERRATA.md](ERRATA.md) (decisions and errata) |
 | Fork point | OpenBSD -current `c595b86dd3448693481299bfba2dc94134ddfa2f` (2026-10-28). Kernel config GENERIC.MP. |
 | Scope | Private, non-production fork for the Ubiquiti USG-3P only |
 
@@ -233,7 +233,7 @@ characters.
 | G2 control plane | Mode 3, budget + yield in place: OSPF FULL for 1 h with the slow path saturated at 64 B on both ports. |
 | G3 mode 1 | All §7.2 functional, VLAN, invalidation, race, ordering, ARP, safety and 1-hour control-plane tests pass in mode 1; R13 measured. (Multi-day endurance soaks are verified in Phase 4 / T4.3). Decides whether Phase 3 (zero-copy) is worth starting. |
 
-### 7.2 Tests (each owned by a task in TASKS.md)
+### 7.2 Tests (each owned by a task issue)
 
 **Correctness:** routed pairs in both directions, TCP, UDP (one-way and
 bidirectional), ICMP; captures on both sides identical except MACs/TCI, TTL
@@ -341,7 +341,7 @@ The OpenBSD numbers predate the RX-queue rework and are re-measured at G0.
 ## 9. Open items
 
 - Confirm the fork-point revisions (NOTES.md) when the tree is pinned.
-- Hardware probes T0.5–T0.9 (TASKS.md). The yield mechanism must be
+- Hardware probes T0.5–T0.9 (task issues). The yield mechanism must be
   hardware-timed; option A (POW time counter) is the primary candidate
   (DESIGN §5.6).
 - Mode P open question (one vs two pf states per connection), only if mode P

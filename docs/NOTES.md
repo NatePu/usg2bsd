@@ -4,7 +4,8 @@ Source facts at the fork point. "Verified" = read by hand in the checkout;
 "reviewer" = reported by a source-grounded review agent on 2026-10-29 and
 not re-read by hand. Revision 4 (2026-10-31) re-read the driver, stack and
 kernel facts by hand at the same commit; the evidence is in the append-only
-[JOURNAL.md](JOURNAL.md) and the new section at the end of this file.
+[JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/7f3df21fca550a981714cb808d4af33f652ed123/docs/JOURNAL.md) (retired 2026-10-31; new evidence is logged in
+[GitHub Issues](https://github.com/NatePu/usg2bsd/issues)) and the new section at the end of this file.
 
 Checkout: OpenBSD -current `c595b86dd3448693481299bfba2dc94134ddfa2f`
 (2026-10-28). `if_cnmac.c` 1.93, `if_cnmacvar.h` 1.21, `octciu.c` 1.22,

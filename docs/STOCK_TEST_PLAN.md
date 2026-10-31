@@ -3,7 +3,7 @@
 **Scope:** evaluate the OpenBSD installation already on the USG-3P. No source
 patches, kernel rebuilds, driver instrumentation, custom sysctls or fast-path code.
 Only standard configuration changes, external tools and repeatable procedures.
-This plan can supply the stock baseline for TASKS T0.4, but has no dependency on
+This plan can supply the stock baseline for task T0.4 (gate G0), but has no dependency on
 the proposed fork. Commands are lab examples, not commands already executed.
 
 **Questions to answer:**

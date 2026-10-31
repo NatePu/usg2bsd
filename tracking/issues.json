@@ -1,0 +1,1406 @@
+{
+ "repo": "NatePu/usg2bsd",
+ "description": "CPU-assisted IPv4 fast path for the OpenBSD/octeon cnmac(4) driver on a Ubiquiti USG-3P: spec, design, decision record and work tracking",
+ "baseline": "7f3df21fca550a981714cb808d4af33f652ed123",
+ "labels": [
+  {
+   "name": "roadmap",
+   "color": "000000",
+   "description": "Top-level map of all work; start here"
+  },
+  {
+   "name": "epic",
+   "color": "5319e7",
+   "description": "Groups a phase's tasks and gates as sub-issues"
+  },
+  {
+   "name": "task",
+   "color": "0e8a16",
+   "description": "Work item with a verifiable Done-when (former TASKS.md T*)"
+  },
+  {
+   "name": "gate",
+   "color": "b60205",
+   "description": "Acceptance gate (SPEC 7.1 G*); a hard stop"
+  },
+  {
+   "name": "user-story",
+   "color": "1d76db",
+   "description": "Requirement (SPEC 5 R*) written as a user story"
+  },
+  {
+   "name": "chore",
+   "color": "c5def5",
+   "description": "Infrastructure, tracking, tooling or docs work"
+  },
+  {
+   "name": "finding",
+   "color": "fbca04",
+   "description": "Doc or code discrepancy with evidence; resolves into ERRATA"
+  },
+  {
+   "name": "needs-owner",
+   "color": "d93f0b",
+   "description": "Needs a decision or action from the owner"
+  },
+  {
+   "name": "blocked",
+   "color": "e11d21",
+   "description": "Cannot proceed; the latest comment says on what"
+  },
+  {
+   "name": "in-progress",
+   "color": "0052cc",
+   "description": "An agent is working on this now"
+  },
+  {
+   "name": "phase-0",
+   "color": "fef2c0",
+   "description": "Phase 0: board, bench, probes"
+  },
+  {
+   "name": "phase-1",
+   "color": "fef2c0",
+   "description": "Phase 1: control plane on amd64"
+  },
+  {
+   "name": "phase-2",
+   "color": "fef2c0",
+   "description": "Phase 2: shadow, control plane, mode 1"
+  },
+  {
+   "name": "phase-3",
+   "color": "fef2c0",
+   "description": "Phase 3: zero-copy mode 2 (optional)"
+  },
+  {
+   "name": "phase-4",
+   "color": "fef2c0",
+   "description": "Phase 4: hardening and acceptance"
+  },
+  {
+   "name": "env:desk",
+   "color": "c2e0c6",
+   "description": "Done-when needs only this repository"
+  },
+  {
+   "name": "env:build-host",
+   "color": "bfd4f2",
+   "description": "Done-when needs the OpenBSD build host"
+  },
+  {
+   "name": "env:board",
+   "color": "f9d0c4",
+   "description": "Done-when needs the USG-3P board and bench"
+  },
+  {
+   "name": "optional",
+   "color": "d4c5f9",
+   "description": "Only if measurements justify it"
+  },
+  {
+   "name": "deferred",
+   "color": "cccccc",
+   "description": "Out of scope for this release"
+  }
+ ],
+ "issues": [
+  {
+   "key": "C1",
+   "title": "Move work tracking to GitHub Issues; retire TASKS.md and JOURNAL.md",
+   "labels": [
+    "chore",
+    "documentation",
+    "env:desk"
+   ],
+   "body": "On 2026-10-31 the owner asked for the work plan to move to GitHub: epics, user stories and task issues, with **GitHub Issues as the source of truth for all work**, every action checkpointed into its issue, AGENTS.md and CLAUDE.md updated to say so, and Markdown files that are no longer relevant removed.\n\n### Done when\n\n- [ ] Private repository {{REPO_URL}} exists, with the baseline commit `7f3df21` (revision-5 docs as found) and the migration commits pushed.\n- [ ] Every TASKS.md task (T0.1–T4.5) and gate (G0–G3) is an issue with its wording, phase epic, blockers, requirement links and references.\n- [ ] Every SPEC requirement (R1–R16, plus mode P) is a user story under {{E-REQ}}.\n- [ ] Open items from JOURNAL.md are issues: build host {{C2}}, fork hosting {{C3}}, review workflow {{C4}}.\n- [ ] AGENTS.md and CLAUDE.md state that GitHub Issues are the source of truth and define the checkpoint protocol.\n- [ ] TASKS.md and JOURNAL.md are removed; every link to them points to an issue or to the baseline permalink.\n- [ ] The roadmap {{ROADMAP}} is pinned.\n- [ ] After publication, `tracking/`, `tools/track.py` and the staging paragraph in AGENTS.md are deleted (the issues are the record).\n\nThe checkpoint comments below record each step.\n",
+   "parent": "E-INFRA",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [
+    {
+     "at": "2026-10-31 09:28 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Session start 2026-10-31 09:10 EDT (Claude Code, Opus 5.5). Request from the owner: populate GitHub with issues, epics and user stories; make GitHub Issues the source of truth for all work; update AGENTS.md and CLAUDE.md; remove Markdown files that are no longer relevant; document everything; checkpoint every action into its issue; then start executing the plan.\n\nDone so far:\n\n1. Read AGENTS.md, CLAUDE.md and docs/ (SPEC, ERRATA, NOTES, JOURNAL, DESIGN, TASKS in full; STOCK_TEST_PLAN outline). Latest journal entry (2026-10-31 09:07 EDT, Antigravity) says revision 5 applied Codex findings C-1..C-8 (ERRATA §6); no unapplied review findings remain. Open items carried forward: build host, persistent fork, stale review workflow, T0.9 yield decision, G0 baseline.\n2. Environment: `gh` is logged in as NatePu (scopes `repo`, `workflow`, `gist`, `read:org`; no `project`, so no Projects board). No `usg2bsd` repository existed. This Mac is macOS arm64 with no OpenBSD host, so no OpenBSD build can run here.\n3. `gh repo create NatePu/usg2bsd --private` was **denied by Claude Code's auto-mode permission classifier** (\"Public Data-Sharing Upload\"). Not retried.\n4. Ruling: stage every issue and every checkpoint comment locally in `tracking/issues.json`; `tools/track.py publish` creates the private repo, pushes, and creates labels, issues, sub-issues, blocked-by links, these queued comments and closures in one resumable run. Why: keeps the owner's instruction (everything documented in its issue) without a GitHub write I am not permitted to make. Cost if wrong: one command for the owner to run; comments carry the time the work was done.\n5. `git init` in the project root; baseline commit `7f3df21` holds every file as found, including TASKS.md and JOURNAL.md, before any change.\n6. Generated 71 staged issues from the baseline docs (script kept in the session scratchpad; task, gate and requirement wording copied verbatim): roadmap, 7 epics (phases 0–4, requirements, infrastructure), 4 gates, 38 tasks (T3.3/T3.4 split), 17 user stories (R1–R16 and mode P; R15 and mode P closed as not planned per SPEC §5), 4 chores (this one, build host {{C2}}, fork hosting {{C3}}, review workflow {{C4}}). `tools/track.py check`: ok.\n\nNext: review rendered issues, update AGENTS.md/CLAUDE.md, retire TASKS.md and JOURNAL.md with link fixes, commit.",
+     "queued": true,
+     "posted": false
+    }
+   ],
+   "number": null
+  },
+  {
+   "key": "ROADMAP",
+   "title": "Roadmap: USG-3P IPv4 fast path (start here)",
+   "labels": [
+    "roadmap"
+   ],
+   "body": "**Start here.** This is the map of all work on the CPU-assisted IPv4 fast path for the OpenBSD/octeon `cnmac(4)` driver on the Ubiquiti USG-3P. GitHub Issues are the source of truth for all work ([AGENTS.md]({{REPO_URL}}/blob/main/AGENTS.md)); the specification, design and decision record live in [`docs/`]({{REPO_URL}}/tree/main/docs).\n\nOptimize routing and VLAN throughput and packet rate first. R13 is a milestone, not a stopping point: G3 must record the remaining bottlenecks and the next useful optimization, or evidence that the tested workload is at its link limit. Mode P is not a prerequisite. Phase 0 board work and Phase 1 run in parallel; Phase 2 starts only when its entry conditions are met.\n\n### How the issues are organized\n\n| Kind | Label | What it holds |\n|---|---|---|\n| Epic | `epic` | One per phase; its sub-issues are that phase's tasks and gates. |\n| Task | `task` | One former TASKS.md item (T*), with its verbatim Done-when. |\n| Gate | `gate` | SPEC §7.1 hard stops G0–G3 and the decision each records. |\n| User story | `user-story` | SPEC requirements R1–R16 (and mode P) under {{E-REQ}}. |\n| Chore | `chore` | Infrastructure and tooling under {{E-INFRA}}. |\n| Finding | `finding` | Doc or code discrepancies; resolved into ERRATA. |\n\n`env:*` labels say what a task's Done-when needs: `env:board` (USG-3P and bench), `env:build-host` (OpenBSD host, {{C2}}), `env:desk` (this repository only). `needs-owner` marks decisions only the owner can make.\n\n### Phases\n\n```\nPhase 0 (host/box) T0.1 pin ─ T0.2 build/boot ─ T0.3 bench ─ T0.4 baseline ─► [G0]\n                 T0.5–T0.9 probes (any order after T0.2)\nPhase 1 (amd64)  T1.0 build ─ T1.1 sysctl ─ T1.2 core ─ T1.3 gen ─ T1.4 mark ─ T1.5 vlan\n                 ─ T1.6 learn ─ T1.7 GC/ARP ─ T1.8 mode switch\n                 T1.9 amd64 harness develops alongside T1.5–T1.8\nPhase 2 (box)    T2.1 MD glue ─ T2.2 HOOK B ─ T2.3 shadow ─► [G1] ─ T2.4 budget/yield ─► [G2]\n                 ─ T2.5 mode 1 ─ T2.6..T2.10 tests + measure ─► [G3]\nPhase 3 (opt.)   mode 2 zero-copy, only if G3 says so\nPhase 4          hardening, soaks, README\n```\n\n| Phase | Epic |\n|---|---|\n| 0 Board, bench, probes | {{E-P0}} |\n| 1 Control plane on amd64 | {{E-P1}} |\n| 2 Shadow, control plane, mode 1 | {{E-P2}} |\n| 3 Zero-copy mode 2 (optional) | {{E-P3}} |\n| 4 Hardening and acceptance | {{E-P4}} |\n| Requirements as user stories | {{E-REQ}} |\n| Infrastructure and tooling | {{E-INFRA}} |\n\n### Gates\n\n| Gate | Pass condition (SPEC §7.1) |\n|---|---|\n| {{G0}} | Pinned kernel, pf disabled: test static routes and OSPF-installed routes separately, with OSPF up for the latter; routed throughput single-flow and 8-flow, untagged and inter-VLAN, 64 B pps, per-core CPU, with LRO on and off. R13 restated if the slow path is already near wire speed. |\n| {{G1}} | Shadow mode (3): `hit` equals the packets of learned pairs within 1 % under load; `ref_*` counters behave for each refusal test; invalidation tests show stale rejection (or a miss after GC), then relearn. |\n| {{G2}} | Mode 3, budget + yield in place: OSPF FULL for 1 h with the slow path saturated at 64 B on both ports. |\n| {{G3}} | All §7.2 functional, VLAN, invalidation, race, ordering, ARP, safety and 1-hour control-plane tests pass in mode 1; R13 measured. (Multi-day endurance soaks are verified in Phase 4 / T4.3). Decides whether Phase 3 (zero-copy) is worth starting. |\n\n### Tasks\n\n| Issue | Task | Needs |\n|---|---|---|\n| {{T0.1}} | Pin the fork at c595b86dd344 and record file revisions | build-host |\n| {{T0.2}} | Build and boot loop: cross-build, TFTP boot, bsd.good recovery | board, build-host |\n| {{T0.3}} | Bench and artefacts: bench/ configs, traffic and capture scripts | board |\n| {{T0.4}} | Stock baseline measurements (G0) | board |\n| {{T0.5}} | Probe: PIP VLAN fields in WQE word2 | board, build-host |\n| {{T0.6}} | Probe: buffer data offsets and WQE LEN | board, build-host |\n| {{T0.7}} | Probe: RX groups and CPU mapping | board, build-host |\n| {{T0.8}} | Probe: FPA pool levels | board, build-host |\n| {{T0.9}} | Probe: interrupt yield mechanism (decides DESIGN §5.6 option A or B) | board, build-host |\n| {{T1.0}} | Build integration: pseudo-device flow and the if_flow.h hook API | build-host |\n| {{T1.1}} | sysctl plumbing: net.flow.* (PF_FLOW, sysctl(8)) | build-host |\n| {{T1.2}} | Flow table core (if_flow.c): SMR hash, pool, kstat, ddb, self-test | build-host |\n| {{T1.3}} | Generation counter and invalidation bump sites | build-host |\n| {{T1.4}} | Forwarded mark in ip_forward() and ip_output() | build-host |\n| {{T1.5}} | vlan helpers: vlan_flow_info() and vlan_flow_lookup() | build-host |\n| {{T1.6}} | Learn: HOOK B request ring and commit task | build-host |\n| {{T1.7}} | GC sweep and ARP refresh | build-host |\n| {{T1.8}} | Mode switch protocol (net.flow.mode) | build-host |\n| {{T1.9}} | amd64 learn harness (FLOW_TESTHOOK) | build-host |\n| {{T2.1}} | cnmac MD glue: port op, per-CPU counters, kstats | board, build-host |\n| {{T2.2}} | HOOK B in cnmac_start | board, build-host |\n| {{T2.3}} | HOOK A in shadow mode (mode 3), proves G1 | board, build-host |\n| {{T2.4}} | RX budget and yield, proves G2 | board, build-host |\n| {{T2.5}} | Mode 1 hit path: take, rewrite, batch, flush | board, build-host |\n| {{T2.6}} | Correctness and VLAN suites (mode 1) | board, build-host |\n| {{T2.7}} | Invalidation, static routing, OSPF and ARP suites (mode 1) | board, build-host |\n| {{T2.8}} | Safety suite (mode 1) | board, build-host |\n| {{T2.9}} | Control plane at full fast-path load (R12) | board, build-host |\n| {{T2.10}} | Measure mode 1 against G0 (R13), proves G3 | board, build-host |\n| {{T3.1}} | Zero-copy ownership experiment (throwaway) | board, build-host |\n| {{T3.2}} | PKO mutex and command-buffer reserve | board, build-host |\n| {{T3.3}} | Mode 2 hit path | board, build-host |\n| {{T3.4}} | Measure mode 2 against mode 1 (R14) | board, build-host |\n| {{T4.1}} | Failure injection | board, build-host |\n| {{T4.2}} | DIAGNOSTIC sweep and lock/call-chain audit | board, build-host |\n| {{T4.3}} | Soaks: 24 h mixed and 72 h reliability | board, build-host |\n| {{T4.4}} | Fork README | desk |\n| {{T4.5}} | Rebase hygiene | build-host |\n\n### Requirement traceability\n\n| Requirement | Implement | Verify |\n|---|---|---|\n| R1 {{R1}} | T2.5 {{T2.5}} | T2.6 {{T2.6}}, T2.10 {{T2.10}} |\n| R2 {{R2}} | T2.5 {{T2.5}}, T1.6 {{T1.6}} (PCP rule) | T2.6 {{T2.6}} |\n| R3 {{R3}} | T2.3 {{T2.3}}, T2.5 {{T2.5}} | T2.3 {{T2.3}} (G1), T2.8 {{T2.8}} |\n| R4 {{R4}} | T1.4 {{T1.4}}, T1.6 {{T1.6}} | T1.4 {{T1.4}}, T2.8 {{T2.8}} |\n| R5 {{R5}} | T2.3 {{T2.3}}, T2.5 {{T2.5}} | T4.2 {{T4.2}} (review) |\n| R6 {{R6}} | T2.1 {{T2.1}}, T2.5 {{T2.5}} | T2.4 {{T2.4}}, T4.3 {{T4.3}} |\n| R7 {{R7}} | T1.8 {{T1.8}}, T1.0 {{T1.0}}, T2.4 {{T2.4}} | T1.8 {{T1.8}}, T2.4 {{T2.4}} |\n| R8 {{R8}} | T1.3 {{T1.3}}, T1.6 {{T1.6}}, T1.7 {{T1.7}} | T1.3 {{T1.3}}, T2.7 {{T2.7}} |\n| R9 {{R9}} | T2.3 {{T2.3}} | T2.8 {{T2.8}} |\n| R10 {{R10}} | T1.5 {{T1.5}}, T1.6 {{T1.6}}, T2.3 {{T2.3}} | T1.6 {{T1.6}}, T2.7 {{T2.7}} (VLAN state and both links) |\n| R11 {{R11}} | T1.5 {{T1.5}}, T1.6 {{T1.6}}, T2.5 {{T2.5}} | T2.6 {{T2.6}} |\n| R12 {{R12}} | T2.4 {{T2.4}} | T2.4 {{T2.4}} (G2), T2.9 {{T2.9}} |\n| R13 {{R13}} | T2.5 {{T2.5}} | T2.10 {{T2.10}} (G3) |\n| R14 {{R14}} | T3.3 {{T3.3}} | T3.4 {{T3.4}} |\n| R15 {{R15}} | Deferred (PPPoE) | Not part of this release |\n| R16 {{R16}} | T1.6 {{T1.6}} | T2.7 {{T2.7}} |\n\nR15 (PPPoE) {{R15}} and mode P {{MODEP}} are deferred.\n\n### Open blockers\n\n- Build host: {{C2}} (owner decision).\n- Fork hosting: {{C3}} (interim patch series in use).\n- Board and bench access for every `env:board` task.\n\n### Documents\n\n[SPEC]({{REPO_URL}}/blob/main/docs/SPEC.md) (requirements, gates) · [ERRATA]({{REPO_URL}}/blob/main/docs/ERRATA.md) (binding decisions D*, errata E*) · [DESIGN]({{REPO_URL}}/blob/main/docs/DESIGN.md) (architecture) · [NOTES]({{REPO_URL}}/blob/main/docs/NOTES.md) (source facts and results) · [STOCK_TEST_PLAN]({{REPO_URL}}/blob/main/docs/STOCK_TEST_PLAN.md) (G0 procedure). Retired with this migration: [TASKS.md]({{BASELINE:docs/TASKS.md}}) and [JOURNAL.md]({{BASELINE:docs/JOURNAL.md}}) (permalinks to the baseline commit).\n",
+   "parent": null,
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": true,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-P0",
+   "title": "Epic: Phase 0 — Board, bench and probes (G0)",
+   "labels": [
+    "epic",
+    "phase-0"
+   ],
+   "body": "Pin and build the fork point, boot it on the USG-3P, wire the bench, measure the stock baseline (G0), and run the hardware probes T0.5–T0.9 that Phase 2 depends on. Phase 0 includes both host builds and board work, and runs in parallel with Phase 1.\n\n```\nT0.1 pin ─ T0.2 build/boot ─ T0.3 bench ─ T0.4 baseline ─► [G0]\nT0.5–T0.9 probes (any order after T0.2)\n```\n\n### Sub-issues\n\n- T0.1 Pin the fork at c595b86dd344 and record file revisions {{T0.1}}\n- T0.2 Build and boot loop: cross-build, TFTP boot, bsd.good recovery {{T0.2}}\n- T0.3 Bench and artefacts: bench/ configs, traffic and capture scripts {{T0.3}}\n- T0.4 Stock baseline measurements (G0) {{T0.4}}\n- T0.5 Probe: PIP VLAN fields in WQE word2 {{T0.5}}\n- T0.6 Probe: buffer data offsets and WQE LEN {{T0.6}}\n- T0.7 Probe: RX groups and CPU mapping {{T0.7}}\n- T0.8 Probe: FPA pool levels {{T0.8}}\n- T0.9 Probe: interrupt yield mechanism (decides DESIGN §5.6 option A or B) {{T0.9}}\n- G0 Gate: stock baseline recorded, go/no-go decided {{G0}}\n\nNeeds the OpenBSD build host ({{C2}}) and the board. T0.1's revision table and T0.3's bench files can be written at the desk.\n\nClose this epic when every sub-issue is closed.\n\nPlan origin: [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5.\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-P1",
+   "title": "Epic: Phase 1 — Control plane on amd64 (no board)",
+   "labels": [
+    "epic",
+    "phase-1"
+   ],
+   "body": "Build the MI control plane (flow table, learn, invalidation, GC/ARP, mode switch, sysctl, kstat) so it compiles and self-tests on amd64. Phase 1 needs no USG hardware, but requires a matching OpenBSD amd64 VM/build host.\n\n```\nT1.0 build ─ T1.1 sysctl ─ T1.2 core ─ T1.3 gen ─ T1.4 mark ─ T1.5 vlan\n─ T1.6 learn ─ T1.7 GC/ARP ─ T1.8 mode switch\nT1.9 amd64 harness develops alongside T1.5–T1.8\n```\n\n### Sub-issues\n\n- T1.0 Build integration: pseudo-device flow and the if_flow.h hook API {{T1.0}}\n- T1.1 sysctl plumbing: net.flow.* (PF_FLOW, sysctl(8)) {{T1.1}}\n- T1.2 Flow table core (if_flow.c): SMR hash, pool, kstat, ddb, self-test {{T1.2}}\n- T1.3 Generation counter and invalidation bump sites {{T1.3}}\n- T1.4 Forwarded mark in ip_forward() and ip_output() {{T1.4}}\n- T1.5 vlan helpers: vlan_flow_info() and vlan_flow_lookup() {{T1.5}}\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n- T1.7 GC sweep and ARP refresh {{T1.7}}\n- T1.8 Mode switch protocol (net.flow.mode) {{T1.8}}\n- T1.9 amd64 learn harness (FLOW_TESTHOOK) {{T1.9}}\n\nCode can be written anywhere against the pinned tree; every Done-when needs the build host ({{C2}}). T1.9 can be built alongside T1.5/T1.6 so it validates Phase 1 as work proceeds.\n\nClose this epic when every sub-issue is closed.\n\nPlan origin: [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5.\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-P2",
+   "title": "Epic: Phase 2 — Board: shadow mode, control-plane protection, mode 1 (G1–G3)",
+   "labels": [
+    "epic",
+    "phase-2"
+   ],
+   "body": "Entry requires G0, successful T0.2, and Phase 1 implementation plus its amd64 checks. T2.3 additionally requires T0.5–T0.7; T2.4 requires T0.8/T0.9; T2.5 requires G1 and G2. G3 requires every T2.6–T2.10 check, not only throughput.\n\n```\nT2.1 MD glue ─ T2.2 HOOK B ─ T2.3 shadow ─► [G1] ─ T2.4 budget/yield ─► [G2]\n─ T2.5 mode 1 ─ T2.6..T2.10 tests + measure ─► [G3]\n```\n\n### Sub-issues\n\n- T2.1 cnmac MD glue: port op, per-CPU counters, kstats {{T2.1}}\n- T2.2 HOOK B in cnmac_start {{T2.2}}\n- T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n- G1 Gate: learning validated in shadow mode (mode 3) {{G1}}\n- T2.4 RX budget and yield, proves G2 {{T2.4}}\n- G2 Gate: control plane holds with the slow path saturated (mode 3) {{G2}}\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n- T2.6 Correctness and VLAN suites (mode 1) {{T2.6}}\n- T2.7 Invalidation, static routing, OSPF and ARP suites (mode 1) {{T2.7}}\n- T2.8 Safety suite (mode 1) {{T2.8}}\n- T2.9 Control plane at full fast-path load (R12) {{T2.9}}\n- T2.10 Measure mode 1 against G0 (R13), proves G3 {{T2.10}}\n- G3 Gate: mode 1 accepted; decides Phase 3 {{G3}}\n\nStrictly blocked on G0 and T0.9 (AGENTS.md).\n\nClose this epic when every sub-issue is closed.\n\nPlan origin: [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5.\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-P3",
+   "title": "Epic: Phase 3 — Zero-copy mode 2 (optional)",
+   "labels": [
+    "epic",
+    "phase-3",
+    "optional"
+   ],
+   "body": "Only if G3 shows a gap worth closing. DESIGN appendix A.\n\n```\nmode 2 zero-copy, only if G3 says so\n```\n\n### Sub-issues\n\n- T3.1 Zero-copy ownership experiment (throwaway) {{T3.1}}\n- T3.2 PKO mutex and command-buffer reserve {{T3.2}}\n- T3.3 Mode 2 hit path {{T3.3}}\n- T3.4 Measure mode 2 against mode 1 (R14) {{T3.4}}\n\nStarts only on a G3 decision recorded in {{G3}}.\n\nClose this epic when every sub-issue is closed.\n\nPlan origin: [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5.\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-P4",
+   "title": "Epic: Phase 4 — Hardening and acceptance",
+   "labels": [
+    "epic",
+    "phase-4"
+   ],
+   "body": "Failure injection, the DIAGNOSTIC and lock audit, the 24 h/72 h soaks that are final acceptance (ERRATA D15), the fork README and rebase hygiene.\n\n```\nhardening, soaks, README\n```\n\n### Sub-issues\n\n- T4.1 Failure injection {{T4.1}}\n- T4.2 DIAGNOSTIC sweep and lock/call-chain audit {{T4.2}}\n- T4.3 Soaks: 24 h mixed and 72 h reliability {{T4.3}}\n- T4.4 Fork README {{T4.4}}\n- T4.5 Rebase hygiene {{T4.5}}\n\nAfter G3 (and Phase 3 if it runs).\n\nClose this epic when every sub-issue is closed.\n\nPlan origin: [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5.\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-REQ",
+   "title": "Epic: Requirements R1–R16 as user stories",
+   "labels": [
+    "epic"
+   ],
+   "body": "Every SPEC §5 requirement as a user story, with the tasks that implement and verify it (from the TASKS.md traceability table). A story closes when its verifying issues are closed with evidence. R15 and mode P are deferred and closed as not planned.\n\n### Sub-issues\n\n- R1 Forward routed IPv4 on hits without softnet, ip_input, ip_forward or a route lookup {{R1}}\n- R2 Offloaded packets are routed exactly as the slow path would route them {{R2}}\n- R3 Everything outside the offload contract takes the slow path {{R3}}\n- R4 Never learn IPsec, tunnel or other non-plain egress {{R4}}\n- R5 Hit path is non-sleeping, lock-free on lookup and allocation-free {{R5}}\n- R6 Buffers and WQEs returned exactly once; FPA levels in kstat {{R6}}\n- R7 net.flow.mode=0 is a complete off switch {{R7}}\n- R8 Invalidate at admission on every relevant change; refresh ARP fairly {{R8}}\n- R9 Rejected packets reach the slow path unmodified {{R9}}\n- R10 Respect link and running state of ports, VLANs and parents {{R10}}\n- R11 Offload all supported VLAN topologies with slow-path PCP {{R11}}\n- R12 Control plane stays healthy at maximum load {{R12}}\n- R13 Mode 1 reaches the performance targets (provisional) {{R13}}\n- R14 Keep mode 2 only if it measurably beats mode 1 {{R14}}\n- R15 PPPoE encapsulation (deferred) {{R15}}\n- R16 Learn only when pf cannot filter the path {{R16}}\n- Mode P Mode P: learn from pf states (deferred) {{MODEP}}\n\nSource: [SPEC §5]({{DOC:SPEC:5}}).\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "E-INFRA",
+   "title": "Epic: Project infrastructure, tracking and tooling",
+   "labels": [
+    "epic",
+    "chore"
+   ],
+   "body": "Work that keeps the project running rather than implementing the fast path: issue tracking, the build host, where the forked source lives, and review tooling.\n\n### Sub-issues\n\n- Move work tracking to GitHub Issues {{C1}}\n- Provision the OpenBSD build host {{C2}}\n- Decide where the OpenBSD src fork lives {{C3}}\n- Update the saved doc-review workflow to revision 5 {{C4}}\n",
+   "parent": "ROADMAP",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "C2",
+   "title": "Provision the OpenBSD build host (-current at the pinned commit)",
+   "labels": [
+    "chore",
+    "needs-owner",
+    "env:build-host",
+    "phase-0",
+    "phase-1"
+   ],
+   "body": "Phase 1 and Phase 0 builds need an **OpenBSD -current build host at the pinned source version** ([DESIGN §7]({{DOC:DESIGN:7}})): a full checkout at `/usr/src`, matching installed headers and tools, permission to build there, and the `Makefile.cross` octeon toolchain. The amd64 VM also runs the T1.9 learn harness. Nothing like this exists yet; the development Mac (macOS, arm64) cannot run the build.\n\nThis blocks the Done-when of T0.1 (unmodified build), T0.2, T0.5–T0.9 (probe kernels) and every Phase 1 task. Code can be written before it exists.\n\n### Options\n\n1. **Separate amd64 machine or cloud VM** running an OpenBSD -current snapshot, then `make build` and a kernel from the pinned `/usr/src`, so host headers and tools match the fork point exactly. Matches DESIGN §7 as written. *Recommended.*\n2. **QEMU on the Mac, amd64 guest under TCG emulation.** Matches DESIGN §7, but emulation makes every kernel build slow (hours), which hurts the Phase 1 edit-build-test loop.\n3. **QEMU or UTM on the Mac, arm64 guest with hardware virtualization.** Fast, and the MI flow code is the same on arm64, but it changes DESIGN §7 and T1.9 (amd64), and cross-building octeon from an arm64 host is untested. Needs an ERRATA entry before use.\n\n### Done when\n\n- [ ] The host is reachable by agents (record the ssh alias or access method in AGENTS.md) with `/usr/src` at `c595b86dd344` plus the fork patches ({{C3}}).\n- [ ] `config GENERIC.MP` and the DESIGN §7 recipe run, with tool versions recorded in NOTES.md (feeds {{T0.2}}).\n- [ ] An amd64 GENERIC.MP kernel builds and boots in the VM (feeds {{T1.0}}).\n\nOwner decision needed: which option, and who provisions it.\n",
+   "parent": "E-INFRA",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "C3",
+   "title": "Decide where the OpenBSD src fork lives",
+   "labels": [
+    "chore",
+    "needs-owner"
+   ],
+   "body": "T0.1 says \"Fork -current at `c595b86dd344`\". Where the forked tree lives is not specified. Options:\n\n1. **Patch series in this repository** (`patches/`, made with `git format-patch` against `c595b86dd344`), applied to a checkout of `openbsd/src` by `tools/fork-src.sh`. Small, private, and rebasing means re-applying the series to a newer upstream. **In use as the interim choice** so work can start; see the ruling on {{T0.1}}.\n2. **Private mirror repository with full history.** Private and rebase-friendly, but upstream is about 1.7 GB and GitHub limits a single push to 2 GB, so the history has to be pushed in pieces.\n3. **Public GitHub fork of `openbsd/src`.** Fastest and rebase-friendly, but GitHub forks of public repositories are public; SPEC §2 calls this a private, non-production fork.\n\nRecommendation: keep option 1 until the build host exists ({{C2}}), then decide whether the build host should pull a branch instead.\n\n### Done when\n\n- [ ] Owner picks an option (comment here).\n- [ ] AGENTS.md \"Where code lives\" matches the choice, and `tools/fork-src.sh` (or its replacement) reproduces the tree.\n",
+   "parent": "E-INFRA",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "C4",
+   "title": "Update the saved doc-review workflow to revision 5",
+   "labels": [
+    "chore",
+    "env:desk"
+   ],
+   "body": "The saved review workflow `.claude/workflows/usg3p-fastpath-doc-review.js` is stale. Findings from the journal entry of 2026-10-31 08:52 EDT ([JOURNAL.md]({{BASELINE:docs/JOURNAL.md}})):\n\n1. **Blocking: no ground truth.** `SCR`, `SRC`, `CVMX` and `PR` (lines 13–16) point at an earlier session's `/private/tmp` scratch directory, which no longer exists.\n2. **It reviews revision 1, not revision 5.** Its CONTEXT describes the permit-any `pass tag OFFLOAD` ruleset, decisions N1..N13, tasks T0A..T3 and requirements up to R21; lens prompts cite DESIGN §9–§10 and SPEC §11, which do not exist.\n3. **It re-litigates settled decisions** (judge panel on route cache versus pf-state learning, ERRATA D1; mode 1 versus zero-copy, D2) and keeps a pf-state lens.\n4. **The decision record is not an input** (ERRATA, STOCK_TEST_PLAN, and now the GitHub issues).\n5. **Results are not kept**: the script only returns JSON.\n6. **Cost**: 9 lenses, 3 judges and a dedup agent, then one verifier per medium-or-worse finding; a full run would start well over 100 agents.\n7. **Retired input**: it reads `docs/TASKS.md` (line 26 and the lens prompts), retired on 2026-10-31. Read the task issues instead, for example `gh issue list --label task --json number,title,body`.\n\n### Done when\n\n- [ ] Source constants point at a persistent checkout of `c595b86dd344` (plus cvmx headers and the OpenWrt diffs), or the script fetches them.\n- [ ] CONTEXT and lens prompts describe revision 5: mode R, mode 1, R1–R16, T0.1–T4.5, D1–D15, DESIGN §1–§8 and appendices.\n- [ ] ERRATA and the open `finding` issues are inputs, with \"do not re-raise a resolved erratum without new evidence\".\n- [ ] Judge panel and pf-state lens dropped; verification capped (for example high/critical only).\n- [ ] Results are posted as a comment on a review issue instead of only returned.\n",
+   "parent": "E-INFRA",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.1",
+   "title": "T0.1 Pin the fork at c595b86dd344 and record file revisions",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n\n### Task\n\n- Fork -current at `c595b86dd344` (or later; record it).\n- Record revisions of `if_cnmac.c`, `if_cnmacvar.h`, `cn30xxpip.c`, `cn30xxpow.c`, `octciu.c`, `pf.c`, `if_vlan.c`, `route.c`, `if_ether.c` in NOTES.md.\n\n### Done when\n\n- [ ] NOTES has the table and the tree builds unmodified (T0.2).\n\n### Related issues\n\n- T0.2 {{T0.2}}\n\n### References\n\n- [SPEC §1]({{DOC:SPEC:1}}): purpose and fork point\n- [DESIGN §7]({{DOC:DESIGN:7}}): development environment\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.2",
+   "title": "T0.2 Build and boot loop: cross-build, TFTP boot, bsd.good recovery",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.1}} · {{C2}} |\n| Errata naming it | E38, E45, E48 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- amd64 build host at the pinned commit: execute DESIGN §7 from a clean shell, including host config, exported cross environment, kernel and target sysctl builds and target-architecture checks.\n- TFTP boot with `bootoctlinux rootdev=sd0 numcores=2` (`rootdev=` source-confirmed in `machdep.c:886`; `numcores=` is a U-Boot argument, board-verified only: both CPUs must attach in `dmesg`); serial console; `/bsd.good` + `dd` image of the stick.\n\n### Done when\n\n- [ ] edit → build → boot of a trivially changed kernel takes < 15 min and recovery to `bsd.good` has been rehearsed.\n\n### References\n\n- [DESIGN §7]({{DOC:DESIGN:7}}): development environment\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.1",
+    "C2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.3",
+   "title": "T0.3 Bench and artefacts: bench/ configs, traffic and capture scripts",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench |\n| Blocked by | {{T0.2}} |\n| Errata naming it | E46, E66 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Wire DESIGN §7 bench.\n- Commit to the repo (`bench/`): `ospfd.conf` for the USG and the neighbour (two paths for failover), static-route setup/teardown scripts for the same destinations, `hostname.vlanN` files, `rc.conf.local` (`pf=NO`), traffic scripts (iperf3 TCP single/8 streams, paced UDP at 1500-byte IP and 64-byte Ethernet frames via pktgen/trafgen, bidirectional; SPEC §7.3 units), capture scripts (`tcpdump` on hosts), measurement capture (`kstat`, `systat ifstat`, `top -b -S -H -s 5` for per-core CPU (`-1` would combine the CPUs into one line), `ospfctl show neighbor`, `arp -an`).\n\n### Done when\n\n- [ ] adjacency FULL, inter-VLAN and untagged↔tagged ping work, scripts produce a results file.\n\n### References\n\n- [DESIGN §7]({{DOC:DESIGN:7}}): development environment\n- [SPEC §7.3]({{DOC:SPEC:7.3}}): measurement protocol\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.4",
+   "title": "T0.4 Stock baseline measurements (G0)",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench |\n| Blocked by | {{T0.3}} |\n| Errata naming it | E46 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Stock pinned kernel, pf off: separate static-route and OSPF-route runs (OSPF up for the latter); single and 8-flow routed throughput (untagged, inter-VLAN), 64 B pps, per-core CPU, with LRO on and off (`ifconfig cnmacN -tcplro`).\n- Also note whether the adjacency survives slow-path saturation. [STOCK_TEST_PLAN.md](STOCK_TEST_PLAN.md) is the step-by-step procedure for these runs.\n\n### Done when\n\n- [ ] table in NOTES.md\n- [ ] G0 decision recorded (R13 restated if needed)\n- [ ] SPEC §7.3 durations, repeats, loss and per-direction/aggregate results included.\n\n### Related issues\n\n- G0 {{G0}}\n- R13 {{R13}}\n\n### References\n\n- [SPEC §7.3]({{DOC:SPEC:7.3}}): measurement protocol\n- [SPEC §7.1]({{DOC:SPEC:7.1}}): gates\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.5",
+   "title": "T0.5 Probe: PIP VLAN fields in WQE word2",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.2}} |\n\n### Task\n\n- Throwaway kernel printing word2 and the first 20 bytes for: untagged IPv4, 802.1Q IPv4, VID 0, QinQ, ARP.\n- Expect `IP_OFFSET` 14/18, `VV` set for VID 0, `VS` set for QinQ, `VLAN_ID` equal to the frame's VID.\n\n### Done when\n\n- [ ] values recorded\n- [ ] DESIGN §5.2 step 2 confirmed or corrected.\n\n### References\n\n- [DESIGN §5.2]({{DOC:DESIGN:5.2}}): hit path\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.6",
+   "title": "T0.6 Probe: buffer data offsets and WQE LEN",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.2}} |\n| Errata naming it | E14 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Same kernel: print `addr − pktbuf` (data offset in the FPA buffer) for untagged/tagged/ARP, and compare WQE `LEN` with `ip_len + l2` for 64 B and 1500 B frames (FCS included or not).\n\n### Done when\n\n- [ ] recorded\n- [ ] appendix A headroom note updated.\n\n### References\n\n- [DESIGN appendix A]({{DOC:DESIGN:A}}): appendix A, mode 2\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.7",
+   "title": "T0.7 Probe: RX groups and CPU mapping",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.2}} |\n\n### Task\n\n- Record `softnet_count()`, `cnmac_nrxgroups`, which CPU services each group (evcount per `cnmacrxN`), ifiq count per port.\n\n### Done when\n\n- [ ] \"one group per CPU\" confirmed (DESIGN §5.8 ordering).\n\n### References\n\n- [DESIGN §5.8]({{DOC:DESIGN:5.8}}): locking and lifetime\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.8",
+   "title": "T0.8 Probe: FPA pool levels",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.2}} |\n\n### Task\n\n- Read FPA free counts for PKT/WQE/CMD/SG idle, under load, after drain (expect ~768 PKT buffers).\n\n### Done when\n\n- [ ] baseline recorded for the leak detector.\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T0.9",
+   "title": "T0.9 Probe: interrupt yield mechanism (decides DESIGN §5.6 option A or B)",
+   "labels": [
+    "task",
+    "phase-0",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 0 ({{E-P0}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.2}} |\n| Errata naming it | E12, E49, E50, E51, E52 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Throwaway kernel with a hard budget in `cnmac_intr` (decide before issuing the next GET_WORK).\n- First record `sysctl kern.clockrate`: at hz=100 no `timeout(9)` re-arm can be shorter than about 10 ms (DESIGN §5.6).\n- Under 64 B overload measure, with `octeon_get_cycles()`, the time from handler return to the next `cnmac_intr` for the group when (a) acking `POW_WQ_INT` with work pending, at stock TC_THR=15 and at smaller values, with the ack before and after the flush/delivery work; (b) writing the group's `POW_WQ_INT_THRx` with TC_EN=0 and restoring it with `cn30xxpow_config()` from a hardware-timed source (CIU timer, or `timeout(9)` with `option HZ=1000`).\n- Read `POW_WQ_INT_PC`, `POW_WQ_INT_THRx`, `POW_WQ_INT_CNTx` and confirm the ≈6.65 µs period (DESIGN §2).\n- Do not try to mask the CIU interrupt: there is no API and the dispatcher restores the enable mask.\n\n### Done when\n\n- [ ] option A or B chosen (DESIGN §5.6) with measured hold-off and granularity\n- [ ] `net.flow.yield` default and units set\n- [ ] SPEC §6.1 updated.\n\n### References\n\n- [DESIGN §5.6]({{DOC:DESIGN:5.6}}): RX budget and yield\n- [DESIGN §2]({{DOC:DESIGN:2}}): facts the design depends on\n- [SPEC §6.1]({{DOC:SPEC:6.1}}): sysctl net.flow.*\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "G0",
+   "title": "G0 Gate: stock baseline recorded, go/no-go decided",
+   "labels": [
+    "gate",
+    "phase-0",
+    "env:board"
+   ],
+   "body": "Acceptance gate from [SPEC §7.1]({{DOC:SPEC:7.1}}). Gates are hard stops: work that depends on this gate does not start until it is closed with evidence.\n\n### Pass condition (SPEC §7.1, verbatim)\n\n> Pinned kernel, pf disabled: test static routes and OSPF-installed routes separately, with OSPF up for the latter; routed throughput single-flow and 8-flow, untagged and inter-VLAN, 64 B pps, per-core CPU, with LRO on and off. R13 restated if the slow path is already near wire speed.\n\n### Decides\n\nGo/no-go for the fork, and whether R13 must be restated because the stock slow path is already near wire speed (TASKS: \"G0 — baseline recorded, R13 restated if needed, go/no-go decided.\").\n\n### Evidence to attach before closing\n\n- [ ] Baseline table in NOTES.md, with the SPEC §7.3 durations, repeats, loss and per-direction/aggregate results ({{T0.4}}).\n- [ ] Static-route and OSPF-route runs, untagged and inter-VLAN, LRO on and off, per-core CPU.\n- [ ] The decision, as a comment here, and SPEC R13 updated if restated.\n\n### Fed by\n\n- T0.1 Pin the fork at c595b86dd344 and record file revisions {{T0.1}}\n- T0.2 Build and boot loop: cross-build, TFTP boot, bsd.good recovery {{T0.2}}\n- T0.3 Bench and artefacts: bench/ configs, traffic and capture scripts {{T0.3}}\n- T0.4 Stock baseline measurements (G0) {{T0.4}}\n\n### Unblocks\n\nPhase 2 entry also needs successful T0.2 and Phase 1 with its amd64 checks; T2.3 needs T0.5–T0.7 and T2.4 needs T0.8/T0.9.\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P0",
+   "blocked_by": [
+    "T0.4"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.0",
+   "title": "T1.0 Build integration: pseudo-device flow and the if_flow.h hook API",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T0.1}} · {{C2}} |\n| Implements | R7 {{R7}} |\n| Errata naming it | E26, E38, E58, E63 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- `sys/conf/files`: `pseudo-device flow`, `file net/if_flow.c flow needs-flag`; `arch/octeon/conf/files.octeon`: `file arch/octeon/dev/if_cnmac_flow.c flow & cnmac`; `sys/conf/GENERIC` (the MI file that both the amd64 and octeon `GENERIC` include): `pseudo-device flow`.\n- `sys/net/if_flow.h`: the hook API of DESIGN §3.1 (`flow_gen_bump()`, `flow_gate_update()`, `flow_fwd_mark()`, `flow_fwd_clear()`, `flow_learn_request()`, `flow_sysctl()`) under `#if NFLOW > 0`, with empty inline stubs otherwise.\n- Kernel declarations sit under `#ifdef _KERNEL`; `FLOWCTL_*` and `FLOWCTL_NAMES` stay outside it so `sbin/sysctl` can include the header.\n- Every hooked `.c` file adds `#include \"flow.h\"`; kstat code sits under `#if NKSTAT > 0`.\n- `flowattach(int)` initialises pool, buckets, SipHash key, counters, kstat, gate state, timeout and dedicated single-worker `flow_tq` (DESIGN §4).\n\n### Done when\n\n- [ ] amd64 and octeon GENERIC.MP build with and without `pseudo-device flow`\n- [ ] without it the hook sites compile to nothing.\n\n### References\n\n- [DESIGN §3.1]({{DOC:DESIGN:3.1}}): internal interfaces\n- [DESIGN §4]({{DOC:DESIGN:4}}): data structures\n- [DESIGN §3]({{DOC:DESIGN:3}}): components\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T0.1",
+    "C2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.1",
+   "title": "T1.1 sysctl plumbing: net.flow.* (PF_FLOW, sysctl(8))",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.0}} |\n| Errata naming it | E27, E38, E59 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- `sys/sys/socket.h`: `pseudo_AF_FLOW 37`, `AF_MAX 38`, `PF_FLOW`; in `CTL_NET_NAMES`, which is indexed by family and ends at pipex (35), add `{ 0, 0 }` for `AF_FRAME` (36) and then `{ \"flow\", CTLTYPE_NODE }` (37); `if_flow.h`: `FLOWCTL_MODE, MAX, IDLE, BUDGET, YIELD, DEBUG, FLOWCTL_MAXID`, `FLOWCTL_NAMES`; `uipc_domain.c` `net_sysctl()`: `PF_FLOW` branch inside the `#ifndef SMALL_KERNEL` block, under `#if NFLOW > 0` (pattern of `PF_PIPEX`); `flow_sysctl()` with `sysctl_int_bounded()`; `mode` goes through the T1.8 setter.\n- `sbin/sysctl/sysctl.c`: `flowname`/`flowlist` and a `PF_FLOW` case (pattern of pipex).\n\n### Done when\n\n- [ ] `sysctl net.flow` lists all knobs on amd64, bounds are enforced, `max` changes require mode 0, and unimplemented mode 2 returns EOPNOTSUPP without altering the active mode.\n- [ ] Active budget/yield updates use the same serialized transition\n- [ ] off-mode updates leave stock hardware settings untouched.\n- [ ] Reading `yield` returns the effective value after rounding to the mechanism's granularity.\n\n### Related issues\n\n- T1.8 {{T1.8}}\n\n### References\n\n- [SPEC §6.1]({{DOC:SPEC:6.1}}): sysctl net.flow.*\n- [DESIGN §5.7]({{DOC:DESIGN:5.7}}): mode switch\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.0"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.2",
+   "title": "T1.2 Flow table core (if_flow.c): SMR hash, pool, kstat, ddb, self-test",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.1}} |\n| Errata naming it | E40 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- DESIGN §4: key, `struct flow` (cache-line layout, `f_ctr[2]`), SipHash, `SMR_LIST` buckets, `flow_mtx` (IPL_NET), pool, `flow_lookup()` (SMR), `flow_insert()`/`flow_unlink()` (locked), `flow_free()` via `smr_call`.\n- Global kstat `flow:0:stats` with the SPEC §6.2 names (template array, `counters_read()` in `ks_read`). ddb `show flows` / `show flow` added to `db_show_cmds[]` in `sys/ddb/db_command.c`.\n- DIAGNOSTIC boot self-test (insert, lookup, unlink, duplicate, stale same-key replacement, full).\n\n### Done when\n\n- [ ] self-test passes on amd64\n- [ ] kstat and ddb output visible.\n\n### References\n\n- [DESIGN §4]({{DOC:DESIGN:4}}): data structures\n- [SPEC §6.2]({{DOC:SPEC:6.2}}): kstat counters\n- [SPEC §6.3]({{DOC:SPEC:6.3}}): ddb\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.1"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.3",
+   "title": "T1.3 Generation counter and invalidation bump sites",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.2}} |\n| Implements | R8 {{R8}} |\n| Verifies | R8 {{R8}} |\n| Errata naming it | E31, E33, E45, E56, E60, E61, E68, E70, E71, E72, E78 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- `flow_gen`, `flow_gen_bump()` (`membar_producer` + `atomic_inc_int` + counter).\n- Wire every DESIGN §5.4 site, each under `#if NFLOW > 0`, re-checking each placement against the source (NOTES lists the verified line numbers).\n- Hook in-place host route PMTU changes/resets in `icmp_mtudisc()` and `tcp_subr.c` (`gen_rt`).\n- Hook `SIOCSIFXFLAGS` for monitor-mode changes (`gen_if`).\n- Hook bridge/trunk membership changes on both logical VLANs and physical parents (`gen_if`).\n- Bump pf skip changes in `pfi_xcommit()`, not in `pfi_set_flags()`/`pfi_clear_flags()`; group-based pf skip changes already invoke `pfi_xcommit()` directly via `pfi_group_addmember()` and `pfi_group_delmember()` (no ruleset reload needed).\n- Add explicit `IPCTL_FORWARDING` and `IPCTL_SENDREDIRECTS` cases to `ip_sysctl()` that compare old and new values.\n- Call `flow_gate_update()` at the forwarding sysctl, the `ipsec_in_use` increment and decrement, DIOCSTART/DIOCSTOP and `pfi_xcommit()`.\n\n### Done when\n\n- [ ] on amd64 each action in the §5.4 table (route add/delete/change, host route PMTU update/reset, `arp -d`, ARP MAC change, link down/up, MTU, lladdr, monitor mode, address add, vlan changes, a logical VLAN or parent joining or leaving a veb, bridge, trunk or aggr, tcpdump start/stop, sysctls, pfctl -e/-d, `pfctl -f` with a changed `set skip`, interface group membership changes, ipsecctl flow add) moves the matching `gen_*` counter, and the learn gate follows forwarding, IPsec and pf state.\n- [ ] VLAN running/link changes bump synchronously\n- [ ] a delayed notification task is not the only hook.\n- [ ] Record exact placements in NOTES.\n- [ ] Add the DIAGNOSTIC admission/bump trace needed by T2.7, without relying on router bpf captures.\n\n### Related issues\n\n- T2.7 {{T2.7}}\n\n### References\n\n- [DESIGN §5.4]({{DOC:DESIGN:5.4}}): invalidation\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.4",
+   "title": "T1.4 Forwarded mark in ip_forward() and ip_output()",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.3}} |\n| Implements | R4 {{R4}} |\n| Verifies | R4 {{R4}} |\n\n### Task\n\n- `sys/sys/mbuf.h`: `pad[1]` → `u_int8_t flow`, `FLOW_M_FWD 0x01`, through `flow_fwd_mark()`/`flow_fwd_clear()` (DESIGN §3.1).\n- `ip_forward()`: set before `ip_output()` when `atomic_load_int(&flow_mode) != 0 && ip->ip_hl == 5`.\n- `ip_output()`: clear at entry when `!(flags & IP_FORWARDING)` and where an IPsec TDB is selected.\n\n### Done when\n\n- [ ] a DIAGNOSTIC counter shows marked packets only for forwarded traffic on amd64\n- [ ] tunnelled (gif/wg) and IPsec traffic arrives at the egress driver unmarked.\n\n### References\n\n- [DESIGN §3.1]({{DOC:DESIGN:3.1}}): internal interfaces\n- [DESIGN §5.1]({{DOC:DESIGN:5.1}}): forwarded mark\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.5",
+   "title": "T1.5 vlan helpers: vlan_flow_info() and vlan_flow_lookup()",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.4}} |\n| Implements | R10 {{R10}} · R11 {{R11}} |\n| Errata naming it | E11e, E33, E58 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- `if_vlan.c`/`if_vlan_var.h`: `vlan_flow_info()` returns a snapshot of parent index, VID/type and rx/tx priority under shared netlock; reject dead/down VLANs and distinguish ENOENT (not a VLAN) from ENETDOWN.\n- `vlan_flow_lookup(parent, vid)` searches the input hash under its SMR/refcount rules and returns a referenced active ifnet, or NULL.\n- Callers release it with `if_put`; no private softc escapes.\n- Both helpers reject VID 0 and unsupported type for offload (the info API may report svlan type for refusal diagnostics).\n- Implement the DESIGN §3.1 prototypes; recognise a vlan by `if_ioctl == vlan_ioctl`.\n\n### Done when\n\n- [ ] amd64 VLAN tests cover parent/VID/prio, svlan, down, destroy/recreate, and reference cleanup on error paths.\n\n### References\n\n- [DESIGN §3.1]({{DOC:DESIGN:3.1}}): internal interfaces\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.4"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.6",
+   "title": "T1.6 Learn: HOOK B request ring and commit task",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.5}} |\n| Implements | R2 {{R2}} · R4 {{R4}} · R8 {{R8}} · R10 {{R10}} · R11 {{R11}} · R16 {{R16}} |\n| Verifies | R10 {{R10}} |\n| Errata naming it | E33, E43, E56, E61, E62, E68, E70, E72, E73 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- DESIGN §5.3.\n- Entire producer through `task_add` inside SMR; ring-locked accepting gate and generation-aware dedup; ring capacity 64.\n- Use the dedicated `flow_tq`.\n- Commit validates both logical interfaces and parents, request rdomain, route/ARP and policy; use `arp_flow_validate()` in `if_ether.c` with its own `arp_mtx` discipline.\n- Producer exits early on a clear `flow_learn_gate`.\n- Commit checks the global policy first (`ref_fwd`, `ref_ipsec`), refuses trunk/aggr/bridge/veb/tpmr members on logical VLANs and parents, and refuses monitor interfaces (`ref_iface`), re-resolves with a non-resolving route lookup on a stack `struct route` (avoiding `RT_RESOLVE` route cloning side effects; D13), and stores the priority/PCP rules and next hop (DESIGN §4, §5.3).\n- Final enabled/generation checks are inside `flow_mtx`; replace stale same-key entries immediately.\n- Every failure releases references and increments a refusal counter.\n\n### Done when\n\n- [ ] T1.9 exercises each supported refusal, delayed request across VLAN-down/recreation/rdomain changes, generation-aware dedup, ring/pool exhaustion, and stale replacement without waiting for GC.\n- [ ] A down ingress VLAN never obtains a current flow while its physical trunk remains up.\n- [ ] A logical VLAN or parent that is a bridge, veb, trunk member, or in monitor mode is refused.\n- [ ] Commit lookup never mutates the routing table with unrequested clones.\n- [ ] With forwarding off or IPsec in use, HOOK B queues no requests.\n\n### Related issues\n\n- T1.9 {{T1.9}}\n\n### References\n\n- [DESIGN §5.3]({{DOC:DESIGN:5.3}}): learn\n- [DESIGN §4]({{DOC:DESIGN:4}}): data structures\n- [DESIGN §5.8]({{DOC:DESIGN:5.8}}): locking and lifetime\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.5"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.7",
+   "title": "T1.7 GC sweep and ARP refresh",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.6}} |\n| Implements | R8 {{R8}} |\n| Errata naming it | E39, E55, E57, E58, E76 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- DESIGN §5.5: gated MPSAFE timeout, single-worker whole-table sweep in chunks of ≤64 entries, with scratch next hops processed after every chunk (rdomain/out_ifidx/address key).\n- No cursor survives a task return.\n- Export `arp_flow_refresh()` from `if_ether.c`, sharing the refresh rule with `arpresolve`, locking `la_refreshed` with `arp_mtx` and sending requests after releasing it.\n- On `FLOW_ARP_GONE`, kill that next hop's flows in the chunk (`gc_arp`; DESIGN §5.5).\n\n### Done when\n\n- [ ] idle/stale entries reclaimed\n- [ ] ≥129 responsive next hops across domains remain refreshed for 25 minutes at `net.inet.ip.arptimeout=120` (moderate load: one refresh attempt fits the 15-second window) and with the default keep.\n- [ ] Full sweep <1 second and maximum revisit interval <2 seconds under load at max table size (including queue delay, meeting the 2-second contract).\n- [ ] Record `arp_sweep_ms` and resource cleanup\n- [ ] unresponsive neighbors still expire normally, and blocking one neighbor's ARP replies removes its flows within 2 seconds of `rt_expire`.\n\n### References\n\n- [DESIGN §5.5]({{DOC:DESIGN:5.5}}): GC and ARP refresh\n- [SPEC §7.2]({{DOC:SPEC:7.2}}): tests\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.6"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.8",
+   "title": "T1.8 Mode switch protocol (net.flow.mode)",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.7}} |\n| Implements | R7 {{R7}} |\n| Verifies | R7 {{R7}} |\n| Errata naming it | E32, E36, E47, E53 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Implement DESIGN §5.7 gates, the close-time generation bump (after `accepting` closes), producer SMR sections, timeout/worker barriers and table/ring reset.\n- Setters serialize with `flow_ctl_lock` and hold no netlock or spinlock while waiting.\n- Add MD callbacks for RX barriers and scheduling restore (stubs on amd64).\n\n### Done when\n\n- [ ] forced interleavings pause a producer before enqueue/task_add and a worker before final commit during 0↔1↔3 transitions\n- [ ] stale requests cannot insert, enqueue or schedule after completed shutdown.\n- [ ] Table/ring empty on return from mode 0\n- [ ] no deadlock, late timer rearm or residual pre-transition work.\n- [ ] Include a producer paused between its `accepting` check and its enqueue while the setter closes: its request must fail the generation check.\n- [ ] DIAGNOSTIC producer checkpoints must not sleep in SMR or under spinlocks.\n\n### References\n\n- [DESIGN §5.7]({{DOC:DESIGN:5.7}}): mode switch\n- [DESIGN §5.8]({{DOC:DESIGN:5.8}}): locking and lifetime\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.7"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T1.9",
+   "title": "T1.9 amd64 learn harness (FLOW_TESTHOOK)",
+   "labels": [
+    "task",
+    "phase-1",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 1 ({{E-P1}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n| Blocked by | {{T1.4}} |\n| Errata naming it | E37 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Implement DESIGN §5.10 with `FLOW_TESTHOOK`, explicitly registered physical parents and a stub port op.\n- Normalize inline and `M_VLANTAG` headers into a local request template without modifying the mbuf; skip logical VLAN hook calls and reject nested tags.\n- Provide the race checkpoints used by T1.8 and test-only current-flow activity injection for T1.7 (normal VM slow-path traffic is not a hit).\n\n### Done when\n\n- [ ] identical inline/metadata-tagged inputs yield equivalent requests and egress VLAN selection\n- [ ] T1.3/T1.5–T1.8 checks pass on a routed amd64 VM.\n- [ ] This does not validate the MD hit path.\n\n### Related issues\n\n- T1.8 {{T1.8}}\n- T1.7 {{T1.7}}\n- T1.3 {{T1.3}}\n- T1.5 {{T1.5}}\n\n### References\n\n- [DESIGN §5.10]({{DOC:DESIGN:5.10}}): amd64 learn harness\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P1",
+   "blocked_by": [
+    "T1.4"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.1",
+   "title": "T2.1 cnmac MD glue: port op, per-CPU counters, kstats",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G0}} · {{T1.8}} · {{T1.9}} |\n| Implements | R6 {{R6}} |\n| Errata naming it | E65 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- `if_cnmac_flow.c`: `cnmac_flow_port(ifp)` (`ifp->if_qstart == cnmac_start` → `sc->sc_port`); register as the MD port op.\n- `cnmac_attach`: `if_counters_alloc(ifp)`; per-port kstat `cnmacN:0:flow`; one global `fpa:0:pools` registered from `cnmac_buf_init()` (`cn30xxfpa_query`), because the pools are shared; `crg_hit[]` lists in `struct cnmac_rx_group`.\n\n### Done when\n\n- [ ] kstats visible\n- [ ] `netstat -i` still correct with stock traffic.\n\n### References\n\n- [DESIGN §5.9]({{DOC:DESIGN:5.9}}): counters\n- [SPEC §6.2]({{DOC:SPEC:6.2}}): kstat counters\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "G0",
+    "T1.8",
+    "T1.9"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.2",
+   "title": "T2.2 HOOK B in cnmac_start",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.1}} |\n\n### Task\n\n- Call `flow_learn_request()` after `ifq_dequeue()` for marked packets.\n\n### Done when\n\n- [ ] with mode 3, `lrn_ok` matches the number of distinct routed pairs in a test (untagged and inter-VLAN), and refusals behave as on amd64.\n\n### References\n\n- [DESIGN §5.3]({{DOC:DESIGN:5.3}}): learn\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.1"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.3",
+   "title": "T2.3 HOOK A in shadow mode (mode 3), proves G1",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.2}} · {{T0.5}} · {{T0.6}} · {{T0.7}} |\n| Implements | R3 {{R3}} · R5 {{R5}} · R9 {{R9}} · R10 {{R10}} |\n| Verifies | R3 {{R3}} |\n| Errata naming it | E64, E79 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- `cnmac_flow_input()` steps 1–4 (DESIGN §5.2), mode 3 returns PASS always.\n\n### Done when\n\n- [ ] **G1**: under iperf/pktgen load `hit` equals the packets of learned pairs within 1 %\n- [ ] invalidation shows stale rejection (or a miss if already reaped), then relearn\n- [ ] QinQ, VID-0, IPv6, ARP, multicast, TTL-1 and oversize frames counted as `sl_*`, never `hit`.\n\n### Related issues\n\n- G1 {{G1}}\n\n### References\n\n- [DESIGN §5.2]({{DOC:DESIGN:5.2}}): hit path\n- [SPEC §7.1]({{DOC:SPEC:7.1}}): gates\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.2",
+    "T0.5",
+    "T0.6",
+    "T0.7"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "G1",
+   "title": "G1 Gate: learning validated in shadow mode (mode 3)",
+   "labels": [
+    "gate",
+    "phase-2",
+    "env:board"
+   ],
+   "body": "Acceptance gate from [SPEC §7.1]({{DOC:SPEC:7.1}}). Gates are hard stops: work that depends on this gate does not start until it is closed with evidence.\n\n### Pass condition (SPEC §7.1, verbatim)\n\n> Shadow mode (3): `hit` equals the packets of learned pairs within 1 % under load; `ref_*` counters behave for each refusal test; invalidation tests show stale rejection (or a miss after GC), then relearn.\n\n### Decides\n\nThat learning, admission and invalidation are correct before any packet is taken (mode 3 counts only).\n\n### Evidence to attach before closing\n\n- [ ] Counters under iperf/pktgen load showing `hit` equal to the packets of learned pairs within 1 % ({{T2.3}}).\n- [ ] Each `ref_*` refusal test and each invalidation test (stale rejection or miss after GC, then relearn).\n- [ ] QinQ, VID-0, IPv6, ARP, multicast, TTL-1 and oversize frames counted as `sl_*`, never `hit`.\n\n### Fed by\n\n- T2.1 cnmac MD glue: port op, per-CPU counters, kstats {{T2.1}}\n- T2.2 HOOK B in cnmac_start {{T2.2}}\n- T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n\n### Unblocks\n\nT2.4 (budget and yield) and, with G2, T2.5 (mode 1).\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.4",
+   "title": "T2.4 RX budget and yield, proves G2",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G1}} · {{T0.8}} · {{T0.9}} |\n| Implements | R7 {{R7}} · R12 {{R12}} |\n| Verifies | R6 {{R6}} · R7 {{R7}} · R12 {{R12}} |\n| Errata naming it | E32, E36, E47, E49, E50, E74 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- DESIGN §5.6 with the T0.9 mechanism; `net.flow.budget`/`yield`; `yield` counter; per-group rearm gate and scheduling mutex.\n- Budget/yield apply only in modes 1–3; mode 0 restores the stock loop, per-group POW thresholds and global cycle counter period (`cn30xxpow_config_int_pc()`) through the T1.8 MD callbacks.\n- No `timeout(9)` re-arm at hz=100 (DESIGN §5.6).\n\n### Done when\n\n- [ ] **G2**: OSPF FULL for 1 h in mode 3 with the slow path saturated by 64 B traffic on both ports\n- [ ] no pool drift.\n- [ ] Switch to mode 0 with a yield re-arm pending: no group is left with TC_EN=0, global `POW_WQ_INT_PC` and group thresholds match stock baseline, no old callback overwrites stock settings, and no further yield events occur after the setter returns.\n- [ ] Verify stop/down does not get undone by restore.\n\n### Related issues\n\n- T0.9 {{T0.9}}\n- T1.8 {{T1.8}}\n- G2 {{G2}}\n\n### References\n\n- [DESIGN §5.6]({{DOC:DESIGN:5.6}}): RX budget and yield\n- [DESIGN §5.7]({{DOC:DESIGN:5.7}}): mode switch\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "G1",
+    "T0.8",
+    "T0.9"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "G2",
+   "title": "G2 Gate: control plane holds with the slow path saturated (mode 3)",
+   "labels": [
+    "gate",
+    "phase-2",
+    "env:board"
+   ],
+   "body": "Acceptance gate from [SPEC §7.1]({{DOC:SPEC:7.1}}). Gates are hard stops: work that depends on this gate does not start until it is closed with evidence.\n\n### Pass condition (SPEC §7.1, verbatim)\n\n> Mode 3, budget + yield in place: OSPF FULL for 1 h with the slow path saturated at 64 B on both ports.\n\n### Decides\n\nThat the bounded RX loop and the hardware-timed yield keep the control plane alive before mode 1 is enabled.\n\n### Evidence to attach before closing\n\n- [ ] OSPF FULL for 1 h in mode 3 with the slow path saturated at 64 B on both ports; no FPA pool drift ({{T2.4}}).\n- [ ] Mode 0 with a yield re-arm pending restores stock POW thresholds and `POW_WQ_INT_PC`; no late callback; no yields after the setter returns.\n- [ ] Recorded budget/yield settings and the T0.9 mechanism they rely on.\n\n### Fed by\n\n- T0.8 Probe: FPA pool levels {{T0.8}}\n- T0.9 Probe: interrupt yield mechanism (decides DESIGN §5.6 option A or B) {{T0.9}}\n- T2.4 RX budget and yield, proves G2 {{T2.4}}\n\n### Unblocks\n\nT2.5 (mode 1 hit path).\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.4"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.5",
+   "title": "T2.5 Mode 1 hit path: take, rewrite, batch, flush",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G1}} · {{G2}} |\n| Implements | R1 {{R1}} · R2 {{R2}} · R3 {{R3}} · R5 {{R5}} · R6 {{R6}} · R11 {{R11}} · R13 {{R13}} |\n| Errata naming it | E42, E54, E69, E79 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- DESIGN §5.2 steps 5–8: `cnmac_recv_mbuf`, rewrite (template, `pf.prio` and PCP rules, TTL, incremental checksum, length trim), saved WQE tag → `ph_flowid`/`M_FLOWID`, separate hit/slow pending masks, per-egress batches, `ifq_enqueue` + `ifq_serialize` flush, counters.\n- DIAGNOSTIC: verify the IPv4 header checksum after rewrite; assert group == CPU and `cpu_number() < nitems(f_ctr)`.\n\n### Done when\n\n- [ ] first hits forward correctly (capture comparison) for untagged, tagged→untagged, untagged→tagged, tagged→tagged, and hits enter the egress ifq at the priority the slow path would use.\n\n### References\n\n- [DESIGN §5.2]({{DOC:DESIGN:5.2}}): hit path\n- [DESIGN §4]({{DOC:DESIGN:4}}): data structures\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "G1",
+    "G2"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.6",
+   "title": "T2.6 Correctness and VLAN suites (mode 1)",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.5}} |\n| Verifies | R1 {{R1}} · R2 {{R2}} · R11 {{R11}} |\n| Errata naming it | E34, E40, E54, E75 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- SPEC §7.2 \"Correctness\" and \"VLAN\", mode 1, with static and OSPF-installed routes.\n\n### Done when\n\n- [ ] all pass\n- [ ] capture diffs show only MAC/TCI, TTL and checksum changes\n- [ ] PCP test matches the slow path\n- [ ] scoped ordering tests in SPEC §7.2 pass, including multiple streams sharing a cache key and verification that packets with identical egress priority remain in order while differing-PCP packets undergo standard `priq` priority reordering.\n\n### References\n\n- [SPEC §7.2]({{DOC:SPEC:7.2}}): tests\n- [SPEC §4]({{DOC:SPEC:4}}): behaviour contract\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.5"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.7",
+   "title": "T2.7 Invalidation, static routing, OSPF and ARP suites (mode 1)",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.5}} |\n| Verifies | R8 {{R8}} · R10 {{R10}} · R16 {{R16}} |\n| Errata naming it | E31, E33, E39, E41, E55, E56, E70, E71, E72, E76 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- SPEC §7.2 \"Invalidation\" and \"ARP\", mode 1: static route add/change/delete and the OSPF failover topology.\n- Include the delayed VLAN-down request and held-egress queue race in SPEC §7.2, physical ingress/egress link-down, bpf attachment on participating versus unrelated interfaces, a logical VLAN or parent added to a bridge, veb or trunk, monitor mode (`IFXF_MONITOR`) enabled on ingress, host route PMTU drops via `icmp_mtudisc()`, and the blocked-ARP-reply expiry case.\n\n### Done when\n\n- [ ] the admission trace never accepts an old generation after its bump\n- [ ] captures identify and permit only pre-bump admissions in the old-path queue tail.\n- [ ] Capture-completeness checks start after draining pre-attachment traffic.\n- [ ] ARP coverage matches T1.7.\n\n### Related issues\n\n- T1.7 {{T1.7}}\n\n### References\n\n- [SPEC §7.2]({{DOC:SPEC:7.2}}): tests\n- [DESIGN §5.4]({{DOC:DESIGN:5.4}}): invalidation\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.5"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.8",
+   "title": "T2.8 Safety suite (mode 1)",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.5}} |\n| Verifies | R3 {{R3}} · R4 {{R4}} · R9 {{R9}} |\n\n### Task\n\n- SPEC §7.2 \"Safety\": other-MAC frames, TTL=1, oversize, truncated/malformed generator, IPsec configured.\n\n### Done when\n\n- [ ] all reach the slow path or are refused as specified, unmodified.\n\n### References\n\n- [SPEC §7.2]({{DOC:SPEC:7.2}}): tests\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.5"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.9",
+   "title": "T2.9 Control plane at full fast-path load (R12)",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.5}} |\n| Verifies | R12 {{R12}} |\n| Errata naming it | E49 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- OSPF FULL 1 h at maximum offered load in mode 1 (1500 B and 64 B, both cores); `ssh` responsive; tune `budget`/`yield`.\n\n### Done when\n\n- [ ] passes with recorded settings.\n\n### References\n\n- [SPEC §7.2]({{DOC:SPEC:7.2}}): tests\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.5"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T2.10",
+   "title": "T2.10 Measure mode 1 against G0 (R13), proves G3",
+   "labels": [
+    "task",
+    "phase-2",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 2 ({{E-P2}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T2.5}} |\n| Verifies | R1 {{R1}} · R13 {{R13}} |\n| Errata naming it | E46, E77 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Single/8-flow 1500 B, 64 B pps, untagged and inter-VLAN, dual port, for static and OSPF-installed routes; per-core CPU; follow SPEC §7.3 units, durations, repeats, loss and shared-trunk limits; compare with G0 and profile remaining bottlenecks.\n\n### Done when\n\n- [ ] **G3**: all functional, correctness, safety and 1-hour control-plane tests pass in mode 1\n- [ ] results in NOTES.md, the Phase 3 decision and any further mode-1 optimization work recorded (multi-day endurance soaks are verified in T4.3).\n- [ ] Meeting R13 alone does not end performance work.\n\n### Related issues\n\n- G0 {{G0}}\n- G3 {{G3}}\n- T4.3 {{T4.3}}\n- R13 {{R13}}\n\n### References\n\n- [SPEC §7.3]({{DOC:SPEC:7.3}}): measurement protocol\n- [SPEC §7.1]({{DOC:SPEC:7.1}}): gates\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.5"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "G3",
+   "title": "G3 Gate: mode 1 accepted; decides Phase 3",
+   "labels": [
+    "gate",
+    "phase-2",
+    "env:board"
+   ],
+   "body": "Acceptance gate from [SPEC §7.1]({{DOC:SPEC:7.1}}). Gates are hard stops: work that depends on this gate does not start until it is closed with evidence.\n\n### Pass condition (SPEC §7.1, verbatim)\n\n> All §7.2 functional, VLAN, invalidation, race, ordering, ARP, safety and 1-hour control-plane tests pass in mode 1; R13 measured. (Multi-day endurance soaks are verified in Phase 4 / T4.3). Decides whether Phase 3 (zero-copy) is worth starting.\n\n### Decides\n\nMode 1 acceptance, and whether Phase 3 (zero-copy mode 2) is worth starting. R13 is a milestone, not a stopping point: record the remaining bottlenecks and the next useful optimization, or evidence that the workload is at its link limit.\n\n### Evidence to attach before closing\n\n- [ ] All SPEC §7.2 functional, VLAN, invalidation, race, ordering, ARP, safety and 1-hour control-plane tests pass in mode 1 ({{T2.6}}–{{T2.9}}).\n- [ ] R13 measured per SPEC §7.3 and compared with G0; results in NOTES.md ({{T2.10}}).\n- [ ] The Phase 3 decision and further mode-1 optimization work, as a comment here. Multi-day soaks are verified later in {{T4.3}} (ERRATA D15).\n\n### Fed by\n\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n- T2.6 Correctness and VLAN suites (mode 1) {{T2.6}}\n- T2.7 Invalidation, static routing, OSPF and ARP suites (mode 1) {{T2.7}}\n- T2.8 Safety suite (mode 1) {{T2.8}}\n- T2.9 Control plane at full fast-path load (R12) {{T2.9}}\n- T2.10 Measure mode 1 against G0 (R13), proves G3 {{T2.10}}\n\n### Unblocks\n\nPhase 3 (optional) and Phase 4.\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P2",
+   "blocked_by": [
+    "T2.6",
+    "T2.7",
+    "T2.8",
+    "T2.9",
+    "T2.10"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T3.1",
+   "title": "T3.1 Zero-copy ownership experiment (throwaway)",
+   "labels": [
+    "task",
+    "phase-3",
+    "env:board",
+    "env:build-host",
+    "optional"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 3 ({{E-P3}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G3}} |\n\n### Task\n\n- RX → MAC swap → PKO `df=0` on one port pair; base identity, stash intact, WQE returned once, FPA counts restored after drain, CMD rollover under pressure.\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### References\n\n- [DESIGN appendix A]({{DOC:DESIGN:A}}): appendix A, mode 2\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P3",
+   "blocked_by": [
+    "G3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T3.2",
+   "title": "T3.2 PKO mutex and command-buffer reserve",
+   "labels": [
+    "task",
+    "phase-3",
+    "env:board",
+    "env:build-host",
+    "optional"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 3 ({{E-P3}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T3.1}} |\n\n### Task\n\n- `sc_pko_mtx` in `cnmac_send_cmd`, the fast path and around the `cn30xxpko_port_config` reset; reserve-before-rewrite.\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### References\n\n- [DESIGN appendix A]({{DOC:DESIGN:A}}): appendix A, mode 2\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P3",
+   "blocked_by": [
+    "T3.1"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T3.3",
+   "title": "T3.3 Mode 2 hit path",
+   "labels": [
+    "task",
+    "phase-3",
+    "env:board",
+    "env:build-host",
+    "optional"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). TASKS.md listed T3.3 and T3.4 in one bullet; they are split here.\n\n| | |\n|---|---|\n| Phase | Phase 3 ({{E-P3}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T3.2}} · {{T0.6}} |\n| Implements | R14 {{R14}} |\n\n### Task\n\n- Mode 2 hit path (headroom per T0.6; IPD skip change only if needed).\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### Related issues\n\n- T0.6 {{T0.6}}\n\n### References\n\n- [DESIGN appendix A]({{DOC:DESIGN:A}}): appendix A, mode 2\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P3",
+   "blocked_by": [
+    "T3.2",
+    "T0.6"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T3.4",
+   "title": "T3.4 Measure mode 2 against mode 1 (R14)",
+   "labels": [
+    "task",
+    "phase-3",
+    "env:board",
+    "env:build-host",
+    "optional"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). TASKS.md listed T3.3 and T3.4 in one bullet; they are split here.\n\n| | |\n|---|---|\n| Phase | Phase 3 ({{E-P3}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{T3.3}} |\n| Verifies | R14 {{R14}} |\n| Errata naming it | E46 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- Measure mode 2 against mode 1 (R14).\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### Related issues\n\n- R14 {{R14}}\n\n### References\n\n- [SPEC §7.3]({{DOC:SPEC:7.3}}): measurement protocol\n- [DESIGN appendix A]({{DOC:DESIGN:A}}): appendix A, mode 2\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P3",
+   "blocked_by": [
+    "T3.3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T4.1",
+   "title": "T4.1 Failure injection",
+   "labels": [
+    "task",
+    "phase-4",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 4 ({{E-P4}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G3}} |\n\n### Task\n\n- pool exhaustion, link down mid-flow, route flap loop (10 s for 1 h), `ospfd` restart under load, mode toggles under load, power cycle under load.\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P4",
+   "blocked_by": [
+    "G3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T4.2",
+   "title": "T4.2 DIAGNOSTIC sweep and lock/call-chain audit",
+   "labels": [
+    "task",
+    "phase-4",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 4 ({{E-P4}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G3}} |\n| Verifies | R5 {{R5}} |\n| Errata naming it | E35, E42, E69 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- no access to a flow after `smr_read_leave`, no DEAD flow left after GC, WQE returned once, checksum self-check, group/CPU assert, and complete lock/call-chain audit including batching, queue serialization, learn producers and scheduling callbacks against R5.\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### Related issues\n\n- R5 {{R5}}\n\n### References\n\n- [DESIGN §5.8]({{DOC:DESIGN:5.8}}): locking and lifetime\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P4",
+   "blocked_by": [
+    "G3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T4.3",
+   "title": "T4.3 Soaks: 24 h mixed and 72 h reliability",
+   "labels": [
+    "task",
+    "phase-4",
+    "env:board",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 4 ({{E-P4}}) |\n| Needs | USG-3P board and bench · OpenBSD build host ({{C2}}) |\n| Blocked by | {{G3}} |\n| Verifies | R6 {{R6}} |\n| Errata naming it | D15, E77 ([ERRATA.md]({{REPO_URL}}/blob/main/docs/ERRATA.md)) |\n\n### Task\n\n- 24 h mixed and 72 h reliability (OSPF + inter-VLAN).\n\n### Done when\n\n- [ ] no FPA drift after drain, no panics, no stale admissions, no adjacency flaps\n- [ ] pre-change queued traffic classified separately.\n\n### References\n\n- [SPEC §7.2]({{DOC:SPEC:7.2}}): tests\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P4",
+   "blocked_by": [
+    "G3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T4.4",
+   "title": "T4.4 Fork README",
+   "labels": [
+    "task",
+    "phase-4",
+    "env:desk"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 4 ({{E-P4}}) |\n| Needs | nothing beyond this repository |\n| Blocked by | {{G3}} |\n\n### Task\n\n- build, boot, enable, counters, behaviour contract (SPEC §4) verbatim, recovery via `bsd.good`.\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### References\n\n- [SPEC §4]({{DOC:SPEC:4}}): behaviour contract\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P4",
+   "blocked_by": [
+    "G3"
+   ],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "T4.5",
+   "title": "T4.5 Rebase hygiene",
+   "labels": [
+    "task",
+    "phase-4",
+    "env:build-host"
+   ],
+   "body": "Migrated from [TASKS.md]({{BASELINE:docs/TASKS.md}}) revision 5 (2026-10-31). The task and Done-when wording below is unchanged; only line wraps were joined.\n\n| | |\n|---|---|\n| Phase | Phase 4 ({{E-P4}}) |\n| Needs | OpenBSD build host ({{C2}}) |\n\n### Task\n\n- list of touch points (DESIGN §3); rebase occasionally.\n\n### Done when\n\n- [ ] TASKS.md gives no separate Done-when for this item: every point listed under Task is done and recorded. Agree a sharper exit criterion in a comment before starting.\n\n### References\n\n- [DESIGN §3]({{DOC:DESIGN:3}}): components\n\n<sub>Work protocol (AGENTS.md): comment before you start, at every checkpoint and with evidence when done; close only when every Done-when item is verified on the stated environment. Findings against the docs get their own `finding` issue.</sub>\n",
+   "parent": "E-P4",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R1",
+   "title": "R1: Forward routed IPv4 on hits without softnet, ip_input, ip_forward or a route lookup",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** routed IPv4 unicast between the cnmac ports and VLANs to be forwarded on a hit without softnet, `ip_input`, `ip_forward` or a route lookup, **so that** one forwarded flow no longer saturates a core and forwarding approaches line rate.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R1** — Forward IPv4 unicast between cnmac ports and VLANs without softnet, `ip_input`, `ip_forward` or a route lookup on the hit path.\n\n### Acceptance\n\n- [ ] Verified by T2.6 Correctness and VLAN suites (mode 1) {{T2.6}}\n- [ ] Verified by T2.10 Measure mode 1 against G0 (R13), proves G3 {{T2.10}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R2",
+   "title": "R2: Offloaded packets are routed exactly as the slow path would route them",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** a host behind the router, **I want** an offloaded packet to differ from slow-path output only in TTL, IPv4 header checksum and the L2 header, with the same MACs and 802.1Q TCI (including PCP) the slow path would produce, **so that** the fast path is invisible to me.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R2** — Routing only: leave addresses, ports, payload and L4 checksum untouched; decrement TTL and fix the IPv4 header checksum; produce the same L2 header (MACs, 802.1Q TCI including PCP) the slow path would produce.\n\n### Acceptance\n\n- [ ] Verified by T2.6 Correctness and VLAN suites (mode 1) {{T2.6}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n\nTraceability notes from TASKS.md: PCP rule.\n\nBehaviour contract: SPEC §4 item 3 ([SPEC §4]({{DOC:SPEC:4}})).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R3",
+   "title": "R3: Everything outside the offload contract takes the slow path",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** everything listed in SPEC §4 item 2, plus misses, stale flows and frames failing any check, to take the slow path, **so that** only the simple, verified routed case is accelerated.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R3** — Everything in contract item 2 takes the slow path, as do misses, stale flows and frames failing any check.\n\n### Acceptance\n\n- [ ] Verified by T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n- [ ] Verified by T2.8 Safety suite (mode 1) {{T2.8}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n\nTraceability notes from TASKS.md: G1.\n\nBehaviour contract: SPEC §4 item 2 ([SPEC §4]({{DOC:SPEC:4}})).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R4",
+   "title": "R4: Never learn IPsec, tunnel or other non-plain egress",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** a pair whose egress frame came from IPsec, a tunnel, or anything other than plain forwarding out of a cnmac (or a vlan on a cnmac) never to be learned, **so that** encapsulated or policy-routed traffic is never forwarded by the fast path.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R4** — Never learn a pair whose egress frame was produced by IPsec, a tunnel, or anything other than plain forwarding out of a cnmac (or a vlan on a cnmac).\n\n### Acceptance\n\n- [ ] Verified by T1.4 Forwarded mark in ip_forward() and ip_output() {{T1.4}}\n- [ ] Verified by T2.8 Safety suite (mode 1) {{T2.8}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T1.4 Forwarded mark in ip_forward() and ip_output() {{T1.4}}\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n\nBehaviour contract: SPEC §4 item 9 ([SPEC §4]({{DOC:SPEC:4}})).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R5",
+   "title": "R5: Hit path is non-sleeping, lock-free on lookup and allocation-free",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the kernel maintainer, **I want** HOOK A and batch transmit to use no sleeping locks, look flows up under SMR without a flow-table writer lock, and add no per-hit allocation beyond the existing receive/refill and transmit machinery, **so that** the hit path is safe in interrupt context and cheap per packet.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R5** — Mode 1: no sleeping or sleeping locks in HOOK A or batch transmit, and no new per-hit allocation beyond the existing receive/refill and transmit machinery. Lookup uses SMR without a flow-table writer lock; existing non-sleeping ifq/driver locks are permitted.\n\n### Acceptance\n\n- [ ] Verified by T4.2 DIAGNOSTIC sweep and lock/call-chain audit {{T4.2}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n\nTraceability notes from TASKS.md: review.\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R6",
+   "title": "R6: Buffers and WQEs returned exactly once; FPA levels in kstat",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the kernel maintainer, **I want** every packet buffer and WQE returned exactly once and the FPA pool levels observable in kstat, **so that** a leak shows up before it exhausts the 768-buffer packet pool.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R6** — Packet buffers and WQEs are returned exactly once; FPA pool levels are observable in kstat.\n\n### Acceptance\n\n- [ ] Verified by T2.4 RX budget and yield, proves G2 {{T2.4}}\n- [ ] Verified by T4.3 Soaks: 24 h mixed and 72 h reliability {{T4.3}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.1 cnmac MD glue: port op, per-CPU counters, kstats {{T2.1}}\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R7",
+   "title": "R7: net.flow.mode=0 is a complete off switch",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** setting `net.flow.mode=0` to return only once the flow table and learn ring are empty, no old producer or worker can repopulate them, and RX uses the stock loop and interrupt settings, **so that** I have a trustworthy off switch for recovery and for A/B comparison.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R7** — On return from setting `net.flow.mode=0`, the flow table and learn ring are empty, old producers/workers cannot repopulate them, and RX uses the stock unbounded loop and interrupt settings. Previously admitted packets may finish; packet queues are not purged.\n\n### Acceptance\n\n- [ ] Verified by T1.8 Mode switch protocol (net.flow.mode) {{T1.8}}\n- [ ] Verified by T2.4 RX budget and yield, proves G2 {{T2.4}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T1.8 Mode switch protocol (net.flow.mode) {{T1.8}}\n- T1.0 Build integration: pseudo-device flow and the if_flow.h hook API {{T1.0}}\n- T2.4 RX budget and yield, proves G2 {{T2.4}}\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R8",
+   "title": "R8: Invalidate at admission on every relevant change; refresh ARP fairly",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** every relevant route, ARP, interface, VLAN, bridge/trunk, monitor, bpf, sysctl, pf or IPsec change to invalidate cached flows at admission, and the next hops of active flows to be refreshed in ARP, **so that** offloaded traffic never follows a stale forwarding decision beyond the documented queue tail.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R8** — Invalidation at admission per contract item 5, plus fair ARP refresh per item 6. Old-generation entries never pass a new admission check after the bump; queued packets are explicitly exempt.\n\n### Acceptance\n\n- [ ] Verified by T1.3 Generation counter and invalidation bump sites {{T1.3}}\n- [ ] Verified by T2.7 Invalidation, static routing, OSPF and ARP suites (mode 1) {{T2.7}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T1.3 Generation counter and invalidation bump sites {{T1.3}}\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n- T1.7 GC sweep and ARP refresh {{T1.7}}\n\nBehaviour contract: SPEC §4 items 5 and 6 ([SPEC §4]({{DOC:SPEC:4}})).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R9",
+   "title": "R9: Rejected packets reach the slow path unmodified",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** a packet the fast path rejects to reach the slow path unmodified, **so that** falling back is always transparent.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R9** — A packet rejected by the fast path reaches the slow path unmodified.\n\n### Acceptance\n\n- [ ] Verified by T2.8 Safety suite (mode 1) {{T2.8}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R10",
+   "title": "R10: Respect link and running state of ports, VLANs and parents",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** hits to require both physical ports running with link, and commits to require both logical interfaces and their parents up and running with usable links, **so that** no offloaded traffic crosses a down link or a disabled VLAN.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R10** — The hit path checks `IFF_RUNNING` and link on both physical ports. Commit requires both logical interfaces and parents to be up/running with usable links; logical-state changes invalidate before new admissions may rely on the old state.\n\n### Acceptance\n\n- [ ] Verified by T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n- [ ] Verified by T2.7 Invalidation, static routing, OSPF and ARP suites (mode 1) {{T2.7}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T1.5 vlan helpers: vlan_flow_info() and vlan_flow_lookup() {{T1.5}}\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n- T2.3 HOOK A in shadow mode (mode 3), proves G1 {{T2.3}}\n\nTraceability notes from TASKS.md: VLAN state and both links.\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R11",
+   "title": "R11: Offload all supported VLAN topologies with slow-path PCP",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** a VLAN user, **I want** untagged↔tagged, tagged↔tagged (different VIDs) and inter-VLAN routing on one trunk to be offloaded, with egress PCP exactly as the slow path sets it, **so that** my VLAN deployment gets the full speedup without changing priority behaviour.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R11** — VLAN: untagged↔tagged, tagged↔tagged with different VIDs, inter-VLAN on one trunk; egress PCP exactly as the slow path would set it.\n\n### Acceptance\n\n- [ ] Verified by T2.6 Correctness and VLAN suites (mode 1) {{T2.6}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T1.5 vlan helpers: vlan_flow_info() and vlan_flow_lookup() {{T1.5}}\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n\nBehaviour contract: SPEC §4 item 4 (queue priority) ([SPEC §4]({{DOC:SPEC:4}})).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R12",
+   "title": "R12: Control plane stays healthy at maximum load",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** OSPF adjacencies to stay FULL, ARP to resolve and the shell to stay usable at maximum offered load on both cores, **so that** acceleration never costs me the control plane.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R12** — Control-plane protection: at maximum offered load on both cores, OSPF adjacencies stay FULL, ARP resolves, and the shell stays usable.\n\n### Acceptance\n\n- [ ] Verified by T2.4 RX budget and yield, proves G2 {{T2.4}}\n- [ ] Verified by T2.9 Control plane at full fast-path load (R12) {{T2.9}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.4 RX budget and yield, proves G2 {{T2.4}}\n\nTraceability notes from TASKS.md: G2.\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R13",
+   "title": "R13: Mode 1 reaches the performance targets (provisional)",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** mode 1 to reach ≥ 900 Mbit/s at 1500-byte IPv4 packets and ≥ 100 kpps at 64-byte frames per direction on two ports (aggregate on one inter-VLAN trunk), measured per SPEC §7.3, **so that** the USG-3P routes at close to line rate; the targets are restated after G0.\n\n### Requirement (SPEC §5, Should, verbatim)\n\n> **R13** — Mode 1: ≥ 900 Mbit/s measured over received IPv4 packets at 1500-byte IPv4 packets and ≥ 100 kpps at 64-byte Ethernet frames, per direction on two physical ports with both directions active. On one inter-VLAN trunk the targets are aggregate across both directions because they share its ingress/egress capacity. Measurement protocol: §7.3. **Provisional**: restated after G0.\n\n### Acceptance\n\n- [ ] Verified by T2.10 Measure mode 1 against G0 (R13), proves G3 {{T2.10}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T2.5 Mode 1 hit path: take, rewrite, batch, flush {{T2.5}}\n\nTraceability notes from TASKS.md: G3.\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R14",
+   "title": "R14: Keep mode 2 only if it measurably beats mode 1",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the kernel maintainer, **I want** zero-copy mode 2 to be kept only if it beats mode 1 by a measured margin that justifies its risk, **so that** we do not carry the riskiest buffer-ownership invariants for no gain.\n\n### Requirement (SPEC §5, Should, verbatim)\n\n> **R14** — Mode 2 (if built) must beat mode 1 by a measured margin that justifies keeping it.\n\n### Acceptance\n\n- [ ] Verified by T3.4 Measure mode 2 against mode 1 (R14) {{T3.4}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T3.3 Mode 2 hit path {{T3.3}}\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R15",
+   "title": "R15: PPPoE encapsulation (deferred)",
+   "labels": [
+    "user-story",
+    "deferred"
+   ],
+   "body": "**As** a PPPoE user, **I want** PPPoE-encapsulated traffic to be offloaded, **so that** a PPPoE uplink benefits too; not part of this release.\n\n### Requirement (SPEC §5, Could, deferred, verbatim)\n\n> **R15** — PPPoE encapsulation.\n\n### Status\n\nNot part of this release (SPEC §5 \"Could / deferred\"). Closed as not planned; reopen if it is scheduled.\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "closed",
+   "state_reason": "not_planned",
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "R16",
+   "title": "R16: Learn only when pf cannot filter the path",
+   "labels": [
+    "user-story"
+   ],
+   "body": "**As** the router owner, **I want** mode R to learn only when pf is not running, or both the ingress and egress logical interfaces are `set skip`, **so that** offload never bypasses active filtering.\n\n### Requirement (SPEC §5, Must, verbatim)\n\n> **R16** — Mode R learns only when pf is not running, or both the ingress and egress logical interfaces are `set skip`.\n\n### Acceptance\n\n- [ ] Verified by T2.7 Invalidation, static routing, OSPF and ARP suites (mode 1) {{T2.7}}\n\nClose this story when every verifying issue is closed with evidence that the requirement holds on the stated environment.\n\n### Implemented by\n\n- T1.6 Learn: HOOK B request ring and commit task {{T1.6}}\n\nBehaviour contract: SPEC §4 item 9 ([SPEC §4]({{DOC:SPEC:4}})).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
+  },
+  {
+   "key": "MODEP",
+   "title": "Mode P: Mode P: learn from pf states (deferred)",
+   "labels": [
+    "user-story",
+    "deferred"
+   ],
+   "body": "**As** a future deployment that wants filtering on offloaded paths, **I want** flows learned from pf states (mode P) so that filtered traffic can be offloaded, **so that** firewalled paths can be accelerated too; specified in DESIGN appendix B, not scheduled.\n\n### Requirement (SPEC §5, Could / deferred, verbatim)\n\n> Mode P — Mode P (pf-state learn), for a future deployment that wants filtering on offloaded paths.\n\n### Status\n\nNot part of this release (SPEC §5 \"Could / deferred\"). Closed as not planned; reopen if it is scheduled. The corrected design is [DESIGN appendix B]({{DOC:DESIGN:B}}). Open question before starting: whether a forwarded connection under `pass` creates one floating pf state or two (ERRATA E7, SPEC §9).\n\nSource: [SPEC §5]({{DOC:SPEC:5}}) and the traceability table of [TASKS.md]({{BASELINE:docs/TASKS.md}}).\n",
+   "parent": "E-REQ",
+   "blocked_by": [],
+   "state": "closed",
+   "state_reason": "not_planned",
+   "pin": false,
+   "comments": [],
+   "number": null
+  }
+ ],
+ "dependencies_unsupported": false
+}
