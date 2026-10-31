@@ -48,11 +48,11 @@ gh issue comment 24 --body-file checkpoint.md
 gh issue edit 24 --add-label in-progress
 ```
 
-Until the repository is published, the issues are staged in
-`tracking/issues.json`. Read them with `tools/track.py list` and
-`tools/track.py show KEY`, and checkpoint with `tools/track.py comment KEY`.
-The owner publishes with `tools/track.py publish`. After that, use `gh` and
-delete this paragraph, `tracking/` and `tools/track.py`.
+Every issue title starts with its ID: tasks `T*`, gates `G*`, requirement
+stories `R*`, findings `F*`, chores `C*`; epics start with `Epic:`. Find one
+with `gh issue list --state all --search '"T1.3" in:title'`. A new finding or
+chore takes the next free number (`F7`, `C7`, ...). A GitHub Project board
+will hold every issue once the owner grants the token scope (issue #78).
 
 ## Documents and precedence
 

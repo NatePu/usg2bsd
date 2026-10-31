@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the GitHub Project board for this repository (issue C5, one-off).
+# Build the GitHub Project board for this repository (issue #78, C5; one-off).
 #
 #   gh auth refresh -s project     # once: grants the "project" token scope
 #   sh tools/gh-project.sh         # DRY=1 prints the field values only
