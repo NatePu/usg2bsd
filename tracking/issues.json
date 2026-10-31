@@ -1552,6 +1552,23 @@
    ],
    "number": null,
    "state_synced": false
+  },
+  {
+   "key": "F4",
+   "title": "Finding: T1.3 placement gaps (PMTU writers, SIOCSTRUNK window, gate race)",
+   "labels": [
+    "finding",
+    "phase-1",
+    "env:desk"
+   ],
+   "body": "**Finding (low), found while implementing {{T1.3}}.** Three gaps in DESIGN §5.4/§5.8, fixed in the same change (ERRATA E84–E86):\n\n1. **PMTU writers.** DESIGN §5.4 listed `icmp_mtudisc()` and `tcp_subr.c`. At `c595b86dd344` `rt_mtu` has seven writers: `ip_icmp.c:1080, 1113`, `ip_output.c:474, 564`, `if_loop.c:269`, `rtsock.c:1331`, `route.c:564`. `tcp_subr.c` itself writes nothing; it calls `icmp_mtudisc()` (`tcp_subr.c:786`). Analysis of the rest (NOTES \"T1.3 generation hook placements\"): `rt_setgwroute()` (`route.c:564`) runs only from `rt_setgate()`, reached from bumped paths or from `rtredirect()`, and redirects are ignored while forwarding (`ip_icmp.c:594-597`); `ip_output.c:474` cannot change `min(rt_mtu, egress if_mtu)`; `:564` is IPsec-only; `if_loop.c` is loopback; `route_cleargateway()` sits on the RTF_CACHED delete path that also runs `arpinvalidate()`. Also, `RTM_CHANGE` can fail after editing a route in place (`bfdset()` after `rt_setgate()`, `rtsock.c:1125-1150`), so a success-only hook misses partial changes.\n2. **SIOCSTRUNK window.** Changing a trunk's protocol clears `ac_trport` on every port and sets it again (`if_trunk.c:665, 687`). A commit in between passes the membership check (DESIGN §5.3 step 4); nothing bumped at the re-set.\n3. **Gate race.** `flow_gate_update()` as specified recomputes from atomics and stores. Two updaters can interleave: A reads `ipsec_in_use` = 1 and computes 0; B (policy delete) computes 1 and stores; A stores 0. The gate stays closed, and HOOK B drops every request, until some unrelated policy change.\n\n**Resolution:** hook `icmp_mtudisc()` only when its CAS changes the MTU, plus the timeout reset; `RTM_CHANGE` bumps at the end of `rtm_output()` for any change attempted on a found route; both `SIOCSTRUNK` loops bump; the gate is recomputed and stored under a leaf `flow_gate_mtx`. DESIGN §5.4 and §5.8 updated; ERRATA E84, E85, E86.\n",
+   "parent": "E-P1",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
   }
  ],
  "dependencies_unsupported": false

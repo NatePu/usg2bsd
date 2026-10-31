@@ -18,7 +18,7 @@ cd "$ROOT"
 fail=0
 step() { printf '\n== %s\n' "$*"; }
 
-files=$(git -C "$SRC" diff --name-only fork-base..usg2bsd -- 'sys/*.c' |
+files=$(git -C "$SRC" diff --name-only fork-base -- 'sys/*.c' |
     grep -v '^sys/arch/octeon/')
 step "kcheck with flow"
 python3 tools/kcheck.py --keep-going $files || fail=1

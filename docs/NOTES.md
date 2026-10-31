@@ -185,6 +185,95 @@ Read by hand in the source checkout at `c595b86dd344`. Verified evidence for C-1
 | Group-based pf skip: `pfi_group_addmember()` and `pfi_group_delmember()` call `pfi_xcommit()` directly; no ruleset reload required. | `sys/net/pf_if.c:396-411` |
 | Priority queue drops: `ifq_enqueue()` can evict and drop lower-priority packets for higher-priority hits while returning 0 (success). | `sys/net/ifq.c:375-393, 953-971` |
 
+## T1.3 generation hook placements (fork patch 0004)
+
+Line numbers are in the fork tree after patch 0004 (`tools/fork-src.sh`), not
+at the fork point. Every hook is under `#if NFLOW > 0` and runs after the state
+change it reports, or inside the lock the commit's own check takes
+(`arpinvalidate()` under `arp_mtx`). Conditions not shown: `rtrequest()` bumps
+only when `req != RTM_RESOLVE` and the destination is AF_INET;
+`rtrequest_delete()` and the `RTM_CHANGE` hook only for AF_INET; `arpcache()`
+only when the lladdr `changed`; `arpinvalidate()` only when `sdl_alen != 0`;
+`icmp_mtudisc()` only when its `atomic_cas_uint()` changed `rt_mtu`;
+`vlan_set_vnetid()` only on success.
+
+| Fork line | Function and condition | Call |
+|---|---|---|
+| `sys/net/route.c:956` | `rtrequest_delete()` | `flow_gen_bump(FLOW_GEN_RT)` |
+| `sys/net/route.c:1135` | `rtrequest()` | `flow_gen_bump(FLOW_GEN_RT)` |
+| `sys/net/route.c:1981` | `rt_if_linkstate_change()` | `flow_gen_bump(FLOW_GEN_RT)` |
+| `sys/net/rtsock.c:1203` | `rtm_output()` | `flow_gen_bump(FLOW_GEN_RT)` |
+| `sys/netinet/ip_icmp.c:1084` | `icmp_mtudisc()` | `flow_gen_bump(FLOW_GEN_RT)` |
+| `sys/netinet/ip_icmp.c:1123` | `icmp_mtudisc_timeout()` | `flow_gen_bump(FLOW_GEN_RT)` |
+| `sys/netinet/if_ether.c:764` | `arpcache()` | `flow_gen_bump(FLOW_GEN_ARP)` |
+| `sys/netinet/if_ether.c:794` | `arpinvalidate()` | `flow_gen_bump(FLOW_GEN_ARP)` |
+| `sys/net/if.c:1880` | `if_linkstate()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if.c:2025` | `if_setlladdr()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if.c:2298` | `ifioctl()` SIOCSIFXFLAGS, IFXF_MONITOR changed | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if.c:2356` | `ifioctl()` SIOCSIFMTU, on success | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if.c:2402` | `ifioctl()` SIOCSIFRDOMAIN, on success | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/netinet/in.c:743` | `in_ifinit()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/netinet/in.c:771` | `in_purgeaddr()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_ethersubr.c:632` | `ether_brport_set()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_ethersubr.c:647` | `ether_brport_clr()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_aggr.c:1328` | `aggr_add_port()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_aggr.c:1594` | `aggr_p_dtor()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_trunk.c:388` | `trunk_port_create()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_trunk.c:427` | `trunk_port_destroy()` | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_trunk.c:676` | `trunk_ioctl()` SIOCSTRUNK, after clearing every port | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_trunk.c:702` | `trunk_ioctl()` SIOCSTRUNK, after re-setting every port | `flow_gen_bump(FLOW_GEN_IF)` |
+| `sys/net/if_vlan.c:238` | `vlan_clone_destroy()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:577` | `vlan_up()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:614` | `vlan_down()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:683` | `vlan_link_state()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:804` | `vlan_ioctl()` SIOCSTXHPRIO | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:818` | `vlan_ioctl()` SIOCSRXHPRIO | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:937` | `vlan_set_vnetid()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:984` | `vlan_set_parent()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/if_vlan.c:1005` | `vlan_del_parent()` | `flow_gen_bump(FLOW_GEN_VLAN)` |
+| `sys/net/bpf.c:304` | `bpf_attachd()` | `flow_gen_bump(FLOW_GEN_BPF)` |
+| `sys/net/bpf.c:334` | `bpf_detachd()` | `flow_gen_bump(FLOW_GEN_BPF)` |
+| `sys/netinet/ip_input.c:1840` | `ip_sysctl()` IPCTL_FORWARDING/SENDREDIRECTS, value changed | `flow_gen_bump(FLOW_GEN_SYSCTL)` |
+| `sys/netinet/ip_input.c:1842` | `ip_sysctl()` IPCTL_FORWARDING only | `flow_gate_update(-1)` |
+| `sys/netinet/ip_input.c:1856` | `ip_sysctl()` IPCTL_MULTIPATH, value changed | `flow_gen_bump(FLOW_GEN_SYSCTL)` |
+| `sys/net/pf_ioctl.c:2085` | `pfioctl()` DIOCSTART | `flow_gen_bump(FLOW_GEN_PF)` |
+| `sys/net/pf_ioctl.c:2086` | `pfioctl()` DIOCSTART | `flow_gate_update(-1)` |
+| `sys/net/pf_ioctl.c:2104` | `pfioctl()` DIOCSTOP | `flow_gen_bump(FLOW_GEN_PF)` |
+| `sys/net/pf_ioctl.c:2105` | `pfioctl()` DIOCSTOP | `flow_gate_update(-1)` |
+| `sys/net/pf_if.c:958` | `pfi_xcommit()` | `flow_gen_bump(FLOW_GEN_PF)` |
+| `sys/net/pf_if.c:959` | `pfi_xcommit()` | `flow_gate_update(skip_any)` |
+| `sys/net/pfkeyv2.c:2010` | `pfkeyv2_dosend()` | `flow_gen_bump(FLOW_GEN_IPSEC)` |
+| `sys/net/pfkeyv2.c:2011` | `pfkeyv2_dosend()` | `flow_gate_update(-1)` |
+| `sys/netinet/ip_spd.c:704` | `ipsec_delete_policy()` | `flow_gate_update(-1)` |
+
+Checks made while placing them (ERRATA E84–E86):
+
+- `rt_mtu` has seven writers at the fork point. Hooked: `icmp_mtudisc()`
+  (`ip_icmp.c:1080`) and its timeout reset (`:1113`); TCP reaches the former
+  from `tcp_ctlinput()` (`tcp_subr.c:786`), so `tcp_subr.c` needs no hook of its
+  own. Not hooked, because none changes a forwarding route's effective MTU
+  without another bump: `rt_setgwroute()` (`route.c:564`) runs only from
+  `rt_setgate()`, whose callers are `rtrequest()` RTM_ADD and `RTM_CHANGE`
+  (both bump) and `rtredirect()`, and redirects are ignored while forwarding
+  (`ip_icmp.c:594-597`); `ip_output.c:474` lowers a host route to the egress
+  `if_mtu`, which leaves `min(rt_mtu, if_mtu)` unchanged; `ip_output.c:564` is
+  the IPsec path (learning refused while `ipsec_in_use`); `if_loop.c:269` is
+  loopback; `route_cleargateway()` (`rtsock.c:1331`) resets to 0 on the
+  RTF_CACHED delete path, which also runs `arpinvalidate()`.
+- `RTM_CHANGE` can fail after editing the route in place (for example
+  `bfdset()` after `rt_setgate()`), so the hook sits at the end of
+  `rtm_output()` and bumps for any change attempted on a found route.
+- `SIOCSTRUNK` clears `ac_trport` on every port and sets it again
+  (`if_trunk.c:665, 687`); a commit in between would pass the membership
+  check, so both loops bump, as do port create and destroy (`:384, 420`).
+- `flow_gate_update()` recomputes the gate under a leaf mutex, so racing
+  updaters (forwarding sysctl, IPsec policy add/delete, pf) cannot leave a
+  stale closed gate.
+- Without `pseudo-device flow`, all 16 hooked files compile at -O2 for amd64
+  to the same assembly as at the fork point, apart from six `AF_MAX`
+  comparisons from T1.1 (`route.c`, `rtsock.c`, `if.c`), with `__LINE__` and
+  source paths neutralised.
+
 ## Validation still required
 
 - No flow implementation is present in this project; no T1 task is marked done.

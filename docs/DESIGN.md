@@ -462,15 +462,15 @@ with the atomic bump boundary, and reports the pre-change queue tail separately.
 |---|---|---|
 | `gen_rt` | `rtrequest()` next to `atomic_inc_long(&rtgeneration)` | `req != RTM_RESOLVE` and AF_INET (kernel ARP cloning excluded only) |
 | `gen_rt` | `rtrequest_delete()` | AF_INET |
-| `gen_rt` | `rtsock.c` RTM_CHANGE, after success | AF_INET (ospfd gateway/flag/metric changes) |
+| `gen_rt` | end of `rtm_output()` for RTM_CHANGE on a found route, including failures after a partial in-place edit (ERRATA E84) | AF_INET (ospfd gateway/flag/metric changes) |
 | `gen_rt` | `rt_if_linkstate_change()` | always |
-| `gen_rt` | `icmp_mtudisc()` (`atomic_cas_uint`), `tcp_subr.c` | effective IPv4 host route MTU updates and PMTU timer resets |
+| `gen_rt` | `icmp_mtudisc()` when its `atomic_cas_uint` changes `rt_mtu`, and the reset in `icmp_mtudisc_timeout()`; TCP reaches the former from `tcp_subr.c` | effective IPv4 host route MTU updates and PMTU timer resets; the other `rt_mtu` writers are analysed in NOTES (ERRATA E84) |
 | `gen_arp` | `arpcache()` | when the lladdr `changed` |
 | `gen_arp` | `arpinvalidate()` | when `sdl_alen != 0` before clearing (RTM_INVALIDATE, and expiry once `arptimer` frees the entry). `arptimer` runs only every 300 s, so the GC handles expiry promptly (§5.5) |
 | `gen_if` | `if_linkstate()` | always (covers link, up/down, rdomain, vlan propagation) |
 | `gen_if` | `if_setlladdr()`, SIOCSIFMTU, SIOCSIFRDOMAIN, SIOCSIFXFLAGS (monitor mode) | on success |
 | `gen_if` | interface address add/delete (`in_ifinit`, `in_purgeaddr`) | always (a destination may become local) |
-| `gen_if` | `ether_brport_set()`, `ether_brport_clr()` (bridge, veb, tpmr on logical VLANs or physical parents); the `ac_trport` set and clear sites in `if_aggr.c` and `if_trunk.c` | always (those layers take frames before IP) |
+| `gen_if` | `ether_brport_set()`, `ether_brport_clr()` (bridge, veb, tpmr on logical VLANs or physical parents); the `ac_trport` set and clear sites in `if_aggr.c` and `if_trunk.c`, including both loops of `SIOCSTRUNK` (ERRATA E85) | always (those layers take frames before IP) |
 | `gen_vlan` | vlan set/clear parent, SIOCSVNETID/SIOCDVNETID, SIOCSTXHPRIO, SIOCSRXHPRIO, clone destroy; vlan_up/down and vlan_link_state | after successful synchronous state mutation; do not rely only on the deferred if_linkstate task |
 | `gen_bpf` | `bpf_attachd()`, `bpf_detachd()` | always |
 | `gen_sysctl` | `net.inet.ip.forwarding`, `.multipath`, `.redirect`, `net.flow.mode` | on change. Forwarding and redirect go through the generic `sysctl_bounded_arr(ipctl_vars)` today; add explicit cases in `ip_sysctl()` that compare old and new values, as `IPCTL_MULTIPATH` already does. The forwarding case also calls `flow_gate_update()` |
@@ -657,7 +657,7 @@ barrier in step 3 uses it.
 | Mode transitions / max changes | `flow_ctl_lock`, used by setters only |
 | Mode, commit/GC gates | atomic mode publication; gates under `flow_mtx`; `accepting` under `ring_mtx`; the close bumps `flow_gen` under `flow_mtx` |
 | Ring, accepting gate, dedup cache | `ring_mtx`; all producer activity through task scheduling inside SMR |
-| `flow_learn_gate` | atomic word; written only by `flow_gate_update()` at the policy sites (§5.4); read lock-free by HOOK B as an early exit, never as a correctness check |
+| `flow_learn_gate` | atomic word; written only by `flow_gate_update()` at the policy sites (§5.4), which recomputes it from all inputs under the leaf `flow_gate_mtx` so racing updates cannot leave it stale (ERRATA E86); read lock-free by HOOK B as an early exit, never as a correctness check |
 | ifnet/route in commit and refresh | shared netlock plus acquired references, released on every exit |
 | ARP llinfo / refresh timestamp | helper-owned `arp_mtx` sections; never accessed through an unprotected saved pointer |
 | Yield callbacks / RX scheduling | MD per-group scheduling mutex and rearm gate; barriers as §5.7 |

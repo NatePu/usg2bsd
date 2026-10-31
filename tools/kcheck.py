@@ -119,6 +119,7 @@ def main():
     obj, opts = prepare(src, flow=not a.no_flow)
     s = src / "sys"
     mode = ["-S", "-O2", "-o", "-"] if a.asm else ["-fsyntax-only"]
+    mode += os.environ.get("KCHECK_CFLAGS", "").split()	# extra flags
     base = ["clang", "-target", TARGET] + mode + ["-nostdinc", f"-I{s}", f"-I{obj}",
             f"-I{s}/arch", "-D_KERNEL"] + opts + PARAM + CWARN + CMACH + NEWER_CLANG
     failed = 0

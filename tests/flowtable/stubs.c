@@ -270,6 +270,9 @@ sysctl_int_bounded(void *oldp, size_t *oldlenp, void *newp, size_t newlen,
 	return (0);
 }
 
+int	 ip_forwarding;		/* netinet/ip_input.c */
+extern u_int flow_learn_gate;
+
 /* ---- fake MD operations ---------------------------------------------- */
 
 static int	 md_rx_barriers;
@@ -474,6 +477,16 @@ main(void)
 	    "budget stored without a transition in mode 0");
 	check(set(FLOWCTL_MAX, 100) == 0 && get(FLOWCTL_MAX) == 100,
 	    "max changes in mode 0");
+
+	/* T1.3: the learn gate follows net.inet.ip.forwarding (1 only) */
+	for (k = 0; k <= 2; k++) {
+		ip_forwarding = k;
+		flow_gate_update(-1);
+		check(flow_learn_gate == (k == 1), "learn gate follows forwarding");
+	}
+	g = flow_gen;
+	flow_gen_bump(FLOW_GEN_ARP);
+	check(flow_gen == g + 1, "flow_gen_bump increments the generation");
 
 	check(mtx_depth == 0 && smr_depth == 0, "no lock or SMR section leaked");
 

@@ -19,11 +19,12 @@ ln -sfn "$SRC/sys/arch/arm64/include" "$O/inc/machine"
 ln -sfn "$SRC/sys/arch/arm64/include" "$O/inc/arm64"
 echo '#define NFLOW 1' > "$O/inc/flow.h"
 echo '#define NKSTAT 0' > "$O/inc/kstat.h"
+echo '#define NPF 0' > "$O/inc/pf.h"
 set -- -target arm64-apple-macos -D_KERNEL -DFLOW_SELFTEST -D__OpenBSD__ \
     -nostdinc -ffreestanding -fno-builtin -I"$SRC/sys" -I"$O/inc" \
     -I"$SRC/sys/arch" -O1 -g
 FLOW_C=${FLOW_C:-$SRC/sys/net/if_flow.c}	# a mutated copy for negative tests
-clang "$@" -Wall -Werror -Wno-unknown-warning-option -c \
+clang "$@" -Wall -Werror -Wno-pointer-sign -Wno-unknown-warning-option -c \
     "$FLOW_C" -o "$O/if_flow.o"
 clang "$@" -w -c "$SRC/sys/crypto/siphash.c" -o "$O/siphash.o"
 if [ -f "$ROOT/tests/flowtable/stubs.c" ]; then
