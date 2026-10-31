@@ -1,0 +1,4 @@
+# DUT rc.conf.local for the bench (T0.3). pf stays off on the forwarding
+# path (SPEC 1.1); ospfd is started by hand with a bench ospfd.conf.
+pf=NO
+ospfd_flags=NO

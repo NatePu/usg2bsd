@@ -815,14 +815,18 @@ that remains T1.0/T1.1. Record tool versions and successful commands in NOTES.
   confirmed on the board (both CPUs attach in `dmesg`)
   (`rootdev=` is source-confirmed in `machdep.c:886–888`; boot success is T0.2). Serial 115200 8N1. Keep `/bsd.good`
   and a `dd` image of the original stick.
-- Bench:
+- Bench (ERRATA E87; scripts and configs in `bench/`, addresses in `bench/env.sh`):
 
   | Port | Peer | Role |
   |---|---|---|
-  | `cnmac0` | OSPF neighbour router (OpenBSD `ospfd` or bird/FRR) | real adjacency, route changes, TFTP/DHCP |
-  | `cnmac1` | VLAN trunk (≥ 2 VLANs) to traffic hosts | inter-VLAN, tagged cases |
-  | `cnmac2` | untagged host, second path to the neighbour | untagged↔tagged, failover |
+  | `cnmac0` | management/TFTP network | boot, recovery, management; not a data path |
+  | `cnmac1` | host A (FRR), untagged (U), `vlan10` (V), or a trunk carrying `vlan10`+`vlan20` (H) | measurement topologies of STOCK_TEST_PLAN §2 |
+  | `cnmac2` | host B (FRR), untagged (U) or `vlan20` (V); plus `vlan21` in F | second OSPF path from B for failover, failback and ECMP withdrawal (T2.7) |
   | serial | console | |
+
+  G0, T2.10 and T3.4 run on topologies U, V and H with identical hosts, routes
+  and traffic definitions (SPEC §7.3). Topology F adds the second transit for
+  the invalidation suites.
 
 - Router config: `pf=NO` (or `set skip on { cnmac0 cnmac1 cnmac2 vlan10 vlan20 }`), `ospfd` on the routed interfaces, `net.inet.ip.forwarding=1`.
 

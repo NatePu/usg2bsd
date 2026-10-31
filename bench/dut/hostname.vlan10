@@ -1,0 +1,3 @@
+parent cnmac1 vnetid 10
+inet 10.250.1.1 255.255.255.252
+up

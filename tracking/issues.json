@@ -391,7 +391,15 @@
    "state": "open",
    "state_reason": null,
    "pin": false,
-   "comments": [],
+   "comments": [
+    {
+     "at": "2026-10-31 10:20 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Starting T0.3 at the desk: writing the bench artefacts into `bench/` (configs for the USG and peers, route setup/teardown, traffic, capture and measurement scripts) from DESIGN §7 and STOCK_TEST_PLAN.md, so G0 ({{T0.4}}) and the later fork runs use identical topology and traffic definitions (SPEC §7.3). The Done-when (adjacency FULL, pings, a results file) needs the board and bench and stays open.",
+     "queued": true,
+     "posted": false
+    }
+   ],
    "number": null
   },
   {
@@ -1586,6 +1594,24 @@
    ],
    "number": null,
    "state_synced": false
+  },
+  {
+   "key": "F5",
+   "title": "Finding: DESIGN §7 bench and STOCK_TEST_PLAN topologies disagree",
+   "labels": [
+    "finding",
+    "phase-0",
+    "needs-owner",
+    "env:desk"
+   ],
+   "body": "**Finding (medium), found while starting {{T0.3}}.** The two bench descriptions disagree, and SPEC §7.3 requires G0 and the fork to be measured with \"the same hosts, routes, MTUs, LRO settings and traffic definitions\".\n\n- **DESIGN §7** bench: `cnmac0` = an OSPF neighbour router (real adjacency, route changes, TFTP/DHCP); `cnmac1` = VLAN trunk to the traffic hosts; `cnmac2` = untagged host and a second path to the neighbour (failover).\n- **STOCK_TEST_PLAN.md §1–§2** (the G0 procedure {{T0.4}} uses): management on `cnmac0` only; traffic hosts A and B run FRR themselves and speak OSPF on the data ports; topologies U (A–cnmac1, cnmac2–B, untagged), V (vlan10/cnmac1, vlan20/cnmac2), H (vlan10 and vlan20 on one cnmac1 trunk through a switch); addresses 10.250.1.0/30, 10.250.2.0/30, test loopbacks 198.18.0.1 and 198.19.0.1.\n\nA G0 measured on STOCK_TEST_PLAN's topology cannot be compared with fork runs on DESIGN §7's, and the two disagree about what `cnmac0` is.\n\n**Resolution (ERRATA E87, DESIGN §7):** STOCK_TEST_PLAN §2 is the one measurement bench for G0, T2.10 and T3.4 (U, V, H); `cnmac0` stays management/TFTP. The OSPF failover, failback and ECMP-withdrawal tests of {{T2.7}} use topology F: U plus a second transit between B and the DUT, `vlan21` on `cnmac2` (10.250.3.0/30), so B advertises 198.19.0.1 over two OSPF paths and failover is driven by downing one path. No extra router is needed. The artefacts in `bench/` implement exactly this.\n\nOwner: please confirm or say if a separate neighbour router on `cnmac0` is wanted after all (the scripts take the interface names from `bench/env.sh`).\n",
+   "parent": "E-P0",
+   "blocked_by": [],
+   "state": "open",
+   "state_reason": null,
+   "pin": false,
+   "comments": [],
+   "number": null
   }
  ],
  "dependencies_unsupported": false
