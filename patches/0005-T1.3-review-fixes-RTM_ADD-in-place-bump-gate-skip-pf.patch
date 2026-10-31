@@ -1,0 +1,126 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: NP <50584693+NatePu@users.noreply.github.com>
+Date: Sat, 31 Oct 2026 10:57:27 -0400
+Subject: [PATCH] T1.3: review fixes - RTM_ADD in-place bump, gate skip,
+ pfkeyv2 include
+
+- rtsock.c: bump for RTM_ADD as well as RTM_CHANGE at the end of
+  rtm_output(): RTM_ADD on a cached L2 entry edits it in place
+  ("arp -s" on a gateway's cached entry), and a plain RTM_ADD sets its
+  metrics (rmx_mtu) after rtrequest() bumped (ERRATA E88).
+- pf_if.c: the learn gate counts only Ethernet interfaces with
+  PFI_IFLAG_SKIP, so "set skip on lo" no longer keeps it open (E89).
+- pfkeyv2.c: <net/if_flow.h> outside #if NPF > 0.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ sys/net/if_flow.c | 12 ++++++------
+ sys/net/if_flow.h |  4 ++--
+ sys/net/pf_if.c   |  9 ++++++++-
+ sys/net/pfkeyv2.c |  3 ++-
+ sys/net/rtsock.c  | 10 +++++++---
+ 5 files changed, 25 insertions(+), 13 deletions(-)
+
+diff --git a/sys/net/if_flow.c b/sys/net/if_flow.c
+index 1380a4c5..f44ff8a8 100644
+--- a/sys/net/if_flow.c
++++ b/sys/net/if_flow.c
+@@ -402,12 +402,12 @@ flow_gen_bump(enum flow_gen_src src)
+ /*
+  * The learn gate (DESIGN 5.3) is set only while IP forwarding is 1 (2 is
+  * IPsec-only forwarding), no IPsec policy exists, and pf is stopped or
+- * skips at least one interface.  It only lets HOOK B drop requests that no
+- * commit could accept; commits still check every interface.  pfi_xcommit()
+- * passes whether any pf interface has PFI_IFLAG_SKIP, other callers -1.
+- * Callers change their input first; the mutex makes the last caller
+- * compute from the latest inputs, so racing updates cannot leave a stale
+- * gate behind.  Any context.
++ * skips at least one Ethernet interface.  It only lets HOOK B drop
++ * requests that no commit could accept; commits still check every
++ * interface.  pfi_xcommit() passes whether any Ethernet interface has
++ * PFI_IFLAG_SKIP, other callers -1.  Callers change their input first;
++ * the mutex makes the last caller compute from the latest inputs, so
++ * racing updates cannot leave a stale gate behind.  Any context.
+  */
+ void
+ flow_gate_update(int pf_skip_any)
+diff --git a/sys/net/if_flow.h b/sys/net/if_flow.h
+index 25a79a23..1438e2fb 100644
+--- a/sys/net/if_flow.h
++++ b/sys/net/if_flow.h
+@@ -84,8 +84,8 @@ void	flow_gen_bump(enum flow_gen_src);
+ 
+ /*
+  * Recompute the learn gate from ip_forwarding, ipsec_in_use and
+- * pf_status.running.  pfi_xcommit() passes whether any pf interface has
+- * PFI_IFLAG_SKIP; other callers pass -1 to keep the last value.  Any
++ * pf_status.running.  pfi_xcommit() passes whether any Ethernet interface
++ * has PFI_IFLAG_SKIP; other callers pass -1 to keep the last value.  Any
+  * context.
+  */
+ void	flow_gate_update(int);
+diff --git a/sys/net/pf_if.c b/sys/net/pf_if.c
+index 30dc70c8..7cb09ce4 100644
+--- a/sys/net/pf_if.c
++++ b/sys/net/pf_if.c
+@@ -44,6 +44,7 @@
+ #include <net/if.h>
+ #include <net/if_flow.h>
+ #include <net/if_var.h>
++#include <net/if_types.h>
+ 
+ #include <netinet/in.h>
+ #include <netinet/ip.h>
+@@ -949,7 +950,13 @@ pfi_xcommit(void)
+ 				p->pfik_flags |= gkif->pfik_flags_new;
+ 			}
+ #if NFLOW > 0
+-		if (ISSET(p->pfik_flags, PFI_IFLAG_SKIP))
++		/*
++		 * Only an Ethernet interface can carry an offloaded flow;
++		 * group kifs have no ifnet, and "set skip on lo" must not
++		 * open the learn gate.  Group skips are folded in above.
++		 */
++		if (ifp != NULL && ifp->if_type == IFT_ETHER &&
++		    ISSET(p->pfik_flags, PFI_IFLAG_SKIP))
+ 			skip_any = 1;
+ #endif
+ 	}
+diff --git a/sys/net/pfkeyv2.c b/sys/net/pfkeyv2.c
+index 341dcaca..be910b2e 100644
+--- a/sys/net/pfkeyv2.c
++++ b/sys/net/pfkeyv2.c
+@@ -91,10 +91,11 @@
+ 
+ #if NPF > 0
+ #include <net/if.h>
+-#include <net/if_flow.h>
+ #include <net/pfvar.h>
+ #endif
+ 
++#include <net/if_flow.h>
++
+ #define	PFKEYSNDQ	8192
+ #define	PFKEYRCVQ	8192
+ 
+diff --git a/sys/net/rtsock.c b/sys/net/rtsock.c
+index 5d270dfb..673ae9b5 100644
+--- a/sys/net/rtsock.c
++++ b/sys/net/rtsock.c
+@@ -1197,9 +1197,13 @@ change:
+ 	}
+ 
+ #if NFLOW > 0
+-	/* RTM_CHANGE edits rt in place, possibly only partly on error */
+-	if (rtm->rtm_type == RTM_CHANGE && rt != NULL &&
+-	    rt_key(rt)->sa_family == AF_INET)
++	/*
++	 * RTM_CHANGE edits rt in place, possibly only partly on error;
++	 * RTM_ADD does too when it updates a cached L2 entry (goto change),
++	 * and a plain RTM_ADD sets its metrics after rtrequest() bumped.
++	 */
++	if ((rtm->rtm_type == RTM_CHANGE || rtm->rtm_type == RTM_ADD) &&
++	    rt != NULL && rt_key(rt)->sa_family == AF_INET)
+ 		flow_gen_bump(FLOW_GEN_RT);
+ #endif
+ 	if_put(ifp);

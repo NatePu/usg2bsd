@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Syntax-check OpenBSD amd64 GENERIC.MP kernel sources with clang, on any host.
 
-    tools/kcheck.py [--src DIR] [--no-flow] [--keep-going] [--asm] FILE...
+    tools/kcheck.py [--src DIR] [--no-flow] [--no-dev NAME]... [--keep-going] [--asm] FILE...
 
 FILE paths are relative to the tree (e.g. sys/net/if_flow.c) or absolute.
 This is a pre-build sanity check for the development Mac: it emulates what
@@ -11,7 +11,8 @@ amd64 kernel warning flags and -Werror. It does not link, assemble, run
 config(8) or check octeon (Apple clang has no MIPS backend). The OpenBSD
 build host stays the gate for every Done-when (AGENTS.md).
 
---no-flow checks as if `pseudo-device flow` were absent (NFLOW 0).
+--no-flow checks as if `pseudo-device flow` were absent (NFLOW 0); --no-dev
+NAME does the same for any device or pseudo-device (e.g. --no-dev pf).
 --asm prints the -O2 amd64 assembly instead (e.g. to show that a hook
 site compiles to nothing without flow).
 Generated headers go to <repo>/.kcheck/amd64 (gitignored).
@@ -91,7 +92,7 @@ def needs_headers(src):
     return names
 
 
-def prepare(src, flow):
+def prepare(src, flow, drop=()):
     obj = ROOT / ".kcheck" / "amd64"
     if obj.exists():
         shutil.rmtree(obj)
@@ -99,6 +100,8 @@ def prepare(src, flow):
     opts, devs = config_state(src)
     if not flow:
         devs.pop("flow", None)
+    for d in drop:
+        devs.pop(d, None)
     for name in sorted(needs_headers(src) | {"flow"}):
         count = devs.get(name, 0)
         (obj / f"{name}.h").write_text(f"#define N{name.upper()} {count}\n")
@@ -111,12 +114,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--src", default=str(ROOT / "src"))
     ap.add_argument("--no-flow", action="store_true")
+    ap.add_argument("--no-dev", action="append", default=[])
     ap.add_argument("--keep-going", action="store_true")
     ap.add_argument("--asm", action="store_true")
     ap.add_argument("files", nargs="+")
     a = ap.parse_args()
     src = Path(a.src).resolve()
-    obj, opts = prepare(src, flow=not a.no_flow)
+    obj, opts = prepare(src, flow=not a.no_flow, drop=a.no_dev)
     s = src / "sys"
     mode = ["-S", "-O2", "-o", "-"] if a.asm else ["-fsyntax-only"]
     mode += os.environ.get("KCHECK_CFLAGS", "").split()	# extra flags

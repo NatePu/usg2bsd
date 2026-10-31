@@ -44,6 +44,11 @@ expect gen_rt "route add" -- route -q add 198.51.100.0/24 192.0.2.2
 expect gen_rt "route change" -- route -q change 198.51.100.0/24 192.0.2.3
 expect gen_rt "route delete" -- route -q delete 198.51.100.0/24
 
+# RTM_ADD changes made in place (review fix, ERRATA E88): metrics are set
+# after rtrequest(); "arp -s" on a cached next hop takes the change path
+expect gen_rt "route add -mtu" -- route -q add -mtu 1400 198.51.100.0/24 192.0.2.2
+q route -q delete 198.51.100.0/24
+
 # interface state
 expect gen_if "link down" -- ifconfig $V down
 expect gen_if "link up" -- ifconfig $V up
@@ -103,6 +108,13 @@ q pfctl -f /etc/pf.conf
 
 # optional: ARP and IPsec
 if [ -n "${GW:-}" ]; then
+	# a route through GW makes GW's ARP entry RTF_CACHED; overwriting it
+	# with "arp -s" is an RTM_ADD that edits the route in place (E88)
+	q route -q add 203.0.113.0/24 "$GW"
+	q ping -c 1 -w 1 203.0.113.1
+	expect gen_rt "arp -s on a cached next hop" -- arp -s "$GW" 02:00:00:00:99:99 temp
+	q arp -d "$GW"
+	q route -q delete 203.0.113.0/24
 	q ping -c 1 -w 1 "$GW"
 	b=$(( $(ctr gen_arp) + $(ctr gen_rt) ))
 	q arp -d "$GW"
@@ -117,7 +129,8 @@ if [ "${IPSEC:-0}" = 1 ]; then
 fi
 
 echo "learn gate: check with ddb 'show flows' (learn-gate) after toggling"
-echo "net.inet.ip.forwarding, pfctl -e/-d and an IPsec flow"
+echo "net.inet.ip.forwarding, pfctl -e/-d and an IPsec flow. With pf enabled and"
+echo "only 'set skip on lo' (the default pf.conf) it must read 0 (ERRATA E89)."
 cleanup
 [ $fail -eq 0 ] && echo "T1.3: PASS" || echo "T1.3: FAIL"
 exit $fail

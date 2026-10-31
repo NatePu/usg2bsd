@@ -105,7 +105,7 @@ void	flow_gen_bump(enum flow_gen_src);	/* any context; atomic */
 void	flow_gate_update(int pf_skip_any);
 		/* recompute flow_learn_gate (§5.3) from ip_forwarding,
 		   ipsec_in_use and pf_status.running, all read atomically.
-		   pfi_xcommit() passes whether any kif has PFI_IFLAG_SKIP
+		   pfi_xcommit() passes whether any Ethernet kif has PFI_IFLAG_SKIP
 		   (it walks them under PF_LOCK); other callers pass -1 to
 		   keep the last value. Any context. */
 void	flow_fwd_mark(struct mbuf *);	/* ip_forward(), shared netlock */
@@ -352,7 +352,8 @@ clear. The gate is an atomic word that `flow_gate_update()` recomputes wherever
 an input changes (§5.4): the forwarding sysctl, the `ipsec_in_use` increment and
 decrement, DIOCSTART/DIOCSTOP and `pfi_xcommit()`. It is set only when
 `ip_forwarding == 1`, `ipsec_in_use == 0`, and pf is stopped or at least one
-interface has `PFI_IFLAG_SKIP`. Commit still decides per interface; the gate
+Ethernet interface has `PFI_IFLAG_SKIP`, directly or through a group (loopback
+and group kifs do not count, ERRATA E89). Commit still decides per interface; the gate
 only stops requests when learning cannot succeed anywhere, so a misconfigured
 router does not thrash the 64-slot dedup cache and keep the worker busy.
 
@@ -462,7 +463,7 @@ with the atomic bump boundary, and reports the pre-change queue tail separately.
 |---|---|---|
 | `gen_rt` | `rtrequest()` next to `atomic_inc_long(&rtgeneration)` | `req != RTM_RESOLVE` and AF_INET (kernel ARP cloning excluded only) |
 | `gen_rt` | `rtrequest_delete()` | AF_INET |
-| `gen_rt` | end of `rtm_output()` for RTM_CHANGE on a found route, including failures after a partial in-place edit (ERRATA E84) | AF_INET (ospfd gateway/flag/metric changes) |
+| `gen_rt` | end of `rtm_output()` for RTM_ADD and RTM_CHANGE on a found route: RTM_CHANGE including failures after a partial in-place edit (ERRATA E84), RTM_ADD because it edits a cached L2 entry in place and sets metrics after `rtrequest()` (ERRATA E88) | AF_INET (ospfd gateway/flag/metric changes) |
 | `gen_rt` | `rt_if_linkstate_change()` | always |
 | `gen_rt` | `icmp_mtudisc()` when its `atomic_cas_uint` changes `rt_mtu`, and the reset in `icmp_mtudisc_timeout()`; TCP reaches the former from `tcp_subr.c` | effective IPv4 host route MTU updates and PMTU timer resets; the other `rt_mtu` writers are analysed in NOTES (ERRATA E84) |
 | `gen_arp` | `arpcache()` | when the lladdr `changed` |
