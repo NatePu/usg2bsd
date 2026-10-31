@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__/
+*.pyc
+# Local OpenBSD src working tree (recreate with tools/fork-src.sh)
+/src/
+# Executor scratch
+.superpowers/
