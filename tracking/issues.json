@@ -156,7 +156,15 @@
    "state": "open",
    "state_reason": null,
    "pin": true,
-   "comments": [],
+   "comments": [
+    {
+     "at": "2026-10-31 11:02 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Session summary, 2026-10-31 09:10–11:05 EDT (Claude Code, Opus 5.5).\n\n**Done at the desk (nothing has run on OpenBSD or the board yet):**\n- Tracking moved to Issues ({{C1}}); TASKS.md and JOURNAL.md retired (kept in baseline `7f3df21`).\n- {{T0.1}} pin: fork = `c595b86dd344` + `patches/` (5 patches); revision table in NOTES.\n- {{T0.3}} bench artefacts in `bench/` (one measurement bench for G0 and the fork).\n- Phase 1 {{T1.0}}, {{T1.1}}, {{T1.2}}, {{T1.3}} implemented, checked on the Mac (`tools/desk-check.sh`: clang -Werror with/without flow, OpenBSD config(8), sysctl(8), the real if_flow.c in a harness), and reviewed by a fresh reviewer; its Important findings fixed (patch 0005, {{F6}}).\n- Findings {{F1}}–{{F4}} closed with ERRATA E80–E86; {{F5}} (bench topology) and {{F6}} (deferred review minors) open.\n\n**Blocked on the owner:** build host {{C2}} (every Done-when in Phase 1 and the T0.1 build), fork hosting {{C3}} (interim patch series in use), bench topology confirmation {{F5}}, board access for Phase 0.\n\n**Next:** with the build host, run `tests/t1.1-sysctl.sh` and `tests/t1.3-generation.sh` and the boot self-test, then {{T1.4}}–{{T1.9}}.",
+     "queued": true,
+     "posted": false
+    }
+   ],
    "number": null
   },
   {
