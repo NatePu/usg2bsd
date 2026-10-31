@@ -398,6 +398,13 @@
      "body": "Starting T0.3 at the desk: writing the bench artefacts into `bench/` (configs for the USG and peers, route setup/teardown, traffic, capture and measurement scripts) from DESIGN §7 and STOCK_TEST_PLAN.md, so G0 ({{T0.4}}) and the later fork runs use identical topology and traffic definitions (SPEC §7.3). The Done-when (adjacency FULL, pings, a results file) needs the board and bench and stays open.",
      "queued": true,
      "posted": false
+    },
+    {
+     "at": "2026-10-31 10:24 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Bench artefacts written at the desk, repo commit `3a76366`; nothing ran on the bench (Done-when needs the board, the two Linux hosts and the bench).\n\n- `bench/env.sh`: the STOCK_TEST_PLAN §2 address plan (10.250.1.0/30, 10.250.2.0/30, test loopbacks 198.18.0.1 and 198.19.0.1, router IDs) plus topology F (10.250.3.0/30 on `vlan21`), overridable from the environment.\n- DUT (OpenBSD): `dut/topo.sh U|V|H|F up|down` (runtime config of STOCK_TEST_PLAN §4/§10, forwarding on, pf off and restored); `dut/routes.sh add|delete` (static host routes to the test addresses); `dut/ospfd.conf.{U,V,H,F}`; `dut/rc.conf.local` (`pf=NO`); `dut/hostname.vlan10/20` (persistent V); `dut/measure.sh LABEL start|stop` (netstat -in/-id/-ie/-s -p ip/-m, vmstat -i, arp -an, ospfctl neighbor and fib, `sysctl net.flow` and the flow/fpa/cnmac kstats when present, `top -b -S -H -s 5` per core, a 10-second neighbour sampler) into `$RESULTS/LABEL/`.\n- Linux hosts: `hosts/setup.sh A|B U|V|H|F up|down`; `hosts/frr-ospfd.{A,B}.conf` (B also advertises the F path); `hosts/tcp.sh server|tcp|udp` (the five iperf3 TCP cases and the UDP sweep of §7, 10 s warm-up, 60 s, 3 trials, JSON per trial); `hosts/trafgen.sh` (frame size incl. FCS → payload = frame − 46 untagged / − 50 tagged, 1 or 8 streams on ports 10000–10007, DUT MAC from the neighbour table); `hosts/sink.sh` (tc flower pref 900 count-and-drop sink); `hosts/capture.sh` (validation capture only).\n\nVerification here: `sh -n` on every script; host scripts run against stand-in `ip`/`trafgen` commands produce the trafgen configs of STOCK_TEST_PLAN §8 (64-byte untagged → `fill(0x42, 18)`, tagged VID 10 → `vlan(id=10)` + `fill(0x42, 14)`, eight streams on sp 10000–10007) and the expected `ip` sequence for B in topology F.\n\nFound and handled first: {{F5}} — DESIGN §7's bench disagreed with STOCK_TEST_PLAN's topology, against SPEC §7.3's same-hosts rule. Ruling: STOCK_TEST_PLAN U/V/H is the one measurement bench, cnmac0 stays management, T2.7 failover uses topology F (second B transit on vlan21). Cost if wrong: re-pointing interface names in `bench/env.sh` and adding a neighbour router's config. Owner confirmation requested in {{F5}}.",
+     "queued": true,
+     "posted": false
     }
    ],
    "number": null
@@ -1610,7 +1617,15 @@
    "state": "open",
    "state_reason": null,
    "pin": false,
-   "comments": [],
+   "comments": [
+    {
+     "at": "2026-10-31 10:24 EDT",
+     "author": "Claude Code (Opus 5.5)",
+     "body": "Resolved in docs (DESIGN §7 bench table, ERRATA E87) and implemented in `bench/` (repo commit `3a76366`, {{T0.3}}). Left open with `needs-owner` until the owner confirms topology F instead of a separate neighbour router on cnmac0.",
+     "queued": true,
+     "posted": false
+    }
+   ],
    "number": null
   }
  ],
