@@ -15,8 +15,9 @@ describes a superseded design: do not work from it.
 Rules for every agent:
 
 1. **No work without an issue.** Find the issue for what you are about to do.
-   If none fits, open one (`task`, `finding` or `chore`) and link it from its
-   epic or from the affected task.
+   If none fits, open one (`task`, `finding` or `chore`) as a sub-issue of its
+   epic (`gh issue create --parent <epic>`), which also puts it on the board,
+   and link it from the affected task.
 2. **Checkpoint before, during and after.** Comment on the issue before you
    start (plan, environment) and add `in-progress`. Comment at every
    meaningful step with what was done and the evidence: commands and their
@@ -46,13 +47,20 @@ gh issue list --label task --label phase-1 --state open
 gh issue view 24 --comments
 gh issue comment 24 --body-file checkpoint.md
 gh issue edit 24 --add-label in-progress
+tools/board-sync.sh 24
 ```
 
 Every issue title starts with its ID: tasks `T*`, gates `G*`, requirement
 stories `R*`, findings `F*`, chores `C*`; epics start with `Epic:`. Find one
 with `gh issue list --state all --search '"T1.3" in:title'`. A new finding or
-chore takes the next free number (`F7`, `C7`, ...). A GitHub Project board
-will hold every issue once the owner grants the token scope (issue #78).
+chore takes the next free number (`F7`, `C8`, ...).
+
+The [project board](https://github.com/users/NatePu/projects/2) (private to
+the owner) mirrors every issue with the fields Status, Kind and Phase.
+After you open or close an issue or change its labels, run
+`tools/board-sync.sh N`; with no argument it checks every issue. Change the
+issue, never the card: the next sync overwrites hand edits, and moving a
+card to Done closes its issue.
 
 ## Documents and precedence
 

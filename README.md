@@ -30,8 +30,8 @@ truth for all work: the plan, status, findings and the log of every step,
 checkpointed in each issue. Start at the pinned
 [roadmap](https://github.com/NatePu/usg2bsd/issues/2). Each phase is
 an epic whose sub-issues are its tasks (T\*) and gates (G\*); the requirements
-(R\*) are user stories, and discrepancies are findings (F\*). A project board
-is pending ([#78](https://github.com/NatePu/usg2bsd/issues/78)). Rules for people and agents: [AGENTS.md](AGENTS.md).
+(R\*) are user stories, and discrepancies are findings (F\*). Rules for people
+and agents: [AGENTS.md](AGENTS.md).
 
 ## Layout
 
@@ -43,7 +43,7 @@ is pending ([#78](https://github.com/NatePu/usg2bsd/issues/78)). Rules for peopl
 | [`docs/NOTES.md`](docs/NOTES.md) | Source facts at the fork point and results. |
 | [`docs/STOCK_TEST_PLAN.md`](docs/STOCK_TEST_PLAN.md) | Stock-kernel baseline procedure (gate G0). |
 | [`patches/`](patches) | The fork: a patch series against OpenBSD -current `c595b86dd344`. |
-| [`tools/`](tools) | Recreate the fork tree, regenerate the patches, run the macOS checks. |
+| [`tools/`](tools) | Recreate the fork tree, regenerate the patches, run the macOS checks, sync the project board. |
 | [`tests/`](tests) | Acceptance scripts for the test VM, and a host harness for `if_flow.c`. |
 | [`bench/`](bench) | Bench topology, router configuration, traffic and measurement scripts. |
 
