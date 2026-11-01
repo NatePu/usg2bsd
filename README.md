@@ -84,5 +84,6 @@ commit in `src/` on branch `usg2bsd`, run `tools/fork-patches.sh`, and commit
 
 ## License
 
-Not chosen yet ([#79](https://github.com/NatePu/usg2bsd/issues/79)). The new kernel files carry the ISC license, as
-OpenBSD code does. Modified OpenBSD files keep their own licenses.
+ISC ([LICENSE](LICENSE)), the license OpenBSD uses for new code. The new
+kernel files in `patches/` carry the same notice; the OpenBSD files the patches
+modify keep their own licenses.

@@ -132,6 +132,9 @@ G3 says so.
   library only; PEP 8, 4-space indentation.
 - **Patches**: `tools/fork-patches.sh` writes `patches/` from the commits in
   `src/`. Never edit a patch by hand.
+- **License**: ISC (`LICENSE`). A new C file starts with the ISC notice and
+  `Copyright (c) <year> The usg2bsd authors`, as `sys/net/if_flow.c` does;
+  modified OpenBSD files keep their own notices.
 - **Commits**: the repository is public, but only the owner commits (owner
   decision, 2026-10-31): agents commit and push as the owner, and no bot or
   other account writes to it (no Dependabot pull requests, no outside
