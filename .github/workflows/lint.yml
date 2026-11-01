@@ -1,0 +1,33 @@
+# tools/lint.sh on every push to main and every pull request: shellcheck,
+# Python, whitespace, file modes and the patch headers. The kernel builds
+# only on the OpenBSD build host (AGENTS.md), so CI does not build it.
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install ruff
+        run: pipx install ruff==0.12.0
+      - name: Tool versions
+        run: |
+          shellcheck --version | sed -n 2p
+          ruff --version
+          python3 --version
+      - name: tools/lint.sh
+        run: sh tools/lint.sh
+        env:
+          LINT_STRICT: "1"

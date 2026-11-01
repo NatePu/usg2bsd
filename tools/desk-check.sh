@@ -3,26 +3,48 @@
 #
 #   tools/desk-check.sh
 #
-# 1. clang -fsyntax-only (amd64 kernel flags, -Werror) on every kernel C file
+# 1. tools/lint.sh: shell, Python, whitespace, file modes, patch headers;
+# 2. the fork's commits have no whitespace errors, and patches/ is what
+#    tools/fork-patches.sh makes from them;
+# 3. clang -fsyntax-only (amd64 kernel flags, -Werror) on every kernel C file
 #    the fork touches, with and without "pseudo-device flow"; octeon-only
 #    files are skipped (Apple clang has no MIPS backend);
-# 2. OpenBSD config(8) for amd64 and octeon GENERIC.MP;
-# 3. sysctl(8) against the tree's own headers, compared with the stock file;
-# 4. the flow-table harness, which runs the real if_flow.c (tests/flowtable).
+# 4. OpenBSD config(8) for amd64 and octeon GENERIC.MP;
+# 5. sysctl(8) against the tree's own headers, compared with the stock file;
+# 6. the flow-table harness, which runs the real if_flow.c (tests/flowtable).
 #
 # None of this replaces the OpenBSD build host: see AGENTS.md.
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SRC=${SRC:-$ROOT/src}
-cd "$ROOT"
+cd "$ROOT" || exit 1
 fail=0
 step() { printf '\n== %s\n' "$*"; }
+
+step "lint"
+sh tools/lint.sh || fail=1
+
+step "fork patches"
+if git -C "$SRC" diff --check fork-base usg2bsd; then
+	echo "ok   fork-base..usg2bsd: no whitespace errors"
+else
+	echo "FAIL fork-base..usg2bsd: whitespace errors above"; fail=1
+fi
+if OUT=$ROOT/.kcheck/patches sh tools/fork-patches.sh "$SRC" >/dev/null &&
+    diff -r .kcheck/patches patches; then
+	echo "ok   patches/ matches fork-base..usg2bsd"
+else
+	echo "FAIL patches/ is stale: run tools/fork-patches.sh, commit it"
+	fail=1
+fi
 
 files=$(git -C "$SRC" diff --name-only fork-base -- 'sys/*.c' |
     grep -v '^sys/arch/octeon/')
 step "kcheck with flow"
+# shellcheck disable=SC2086 # one argument per file
 python3 tools/kcheck.py --keep-going $files || fail=1
 step "kcheck without flow"
+# shellcheck disable=SC2046 # one argument per file
 python3 tools/kcheck.py --keep-going --no-flow \
     $(echo "$files" | grep -v '^sys/net/if_flow\.c$') || fail=1
 
