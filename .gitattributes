@@ -1,0 +1,12 @@
+# LF line endings in the repository and in every checkout: sh, OpenBSD
+# configuration files and C all need them.
+* text=auto eol=lf
+
+# The patch series is git format-patch output that tools/fork-src.sh applies
+# byte for byte: no end-of-line conversion and no whitespace warnings (a
+# blank context line in a diff is a single space).
+patches/*.patch -text -whitespace
+
+# Packet captures, if one is ever committed on purpose.
+*.pcap binary
+*.pcapng binary

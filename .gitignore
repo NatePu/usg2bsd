@@ -1,8 +1,69 @@
-.DS_Store
-__pycache__/
-*.pyc
-# Local OpenBSD src working tree (recreate with tools/fork-src.sh)
+# Files that must never be committed. tools/lint.sh fails if a tracked file
+# matches a pattern here (git ls-files -ci --exclude-standard).
+
+## This project
+# OpenBSD src working tree made by tools/fork-src.sh; it is kept as patches/
 /src/
-# Executor scratch
-.superpowers/
-.kcheck/
+# desk-check scratch: generated headers, config(8), the flow-table harness
+/.kcheck/
+# Bench output (RESULTS in bench/env.sh, default ./results). Raw runs are
+# scratch: record what a task keeps in its issue and in docs/NOTES.md.
+results/
+# Leftovers from applying a patch by hand
+*.orig
+*.rej
+# Kernel images and crash dumps copied from the build host or the board
+bsd
+bsd.*
+# Agent workspaces (superpowers executor)
+/.superpowers/
+
+## C build output (the harness and any local build)
+*.o
+*.a
+*.so
+*.dylib
+*.dSYM/
+*.core
+core
+core.[0-9]*
+
+## Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+## Editors and source indexes
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.#*
+\#*#
+tags
+TAGS
+cscope.*
+GPATH
+GRTAGS
+GTAGS
+
+## Operating systems
+.DS_Store
+._*
+Thumbs.db
+
+## Secrets and personal settings (the repository is public)
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+id_ecdsa*
+id_ed25519*
+.claude/settings.local.json
+CLAUDE.local.md

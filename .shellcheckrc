@@ -1,0 +1,5 @@
+# ShellCheck settings for tools/lint.sh, CI and editors. Every script is
+# POSIX sh (AGENTS.md); follow sourced files such as bench/env.sh.
+shell=sh
+external-sources=true
+source-path=SCRIPTDIR
