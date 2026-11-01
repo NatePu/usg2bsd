@@ -138,6 +138,11 @@ G3 says so.
   collaborators). Author commits with the GitHub no-reply address
   (`git config user.email 50584693+NatePu@users.noreply.github.com`), never
   a private address.
+- **GitHub settings** (#83): the "Protect main" ruleset rejects force pushes
+  to `main` and its deletion, with no bypass; workflows may use only
+  GitHub-owned actions, pinned to a commit; CodeQL scans the workflows and
+  the Python on every push. Report security problems through private
+  vulnerability reporting (SECURITY.md), not in public issues.
 - **Checks**: run `tools/lint.sh` before every commit (shellcheck, ruff,
   whitespace, file modes, patch headers); CI runs it on every push. After a
   change in `src/`, also run `tools/desk-check.sh`, which includes lint and
