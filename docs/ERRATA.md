@@ -161,7 +161,9 @@ recorded checks; this follow-up did not run the unfinished multi-reviewer panel.
 
 One reviewer re-read the source by hand in a fresh sparse checkout of the same
 commit, together with the Cavium `cvmx-*.h` headers and OpenWrt PR #25645. It
-followed the lens checklist of `.claude/workflows/usg3p-fastpath-doc-review.js`
+followed the lens checklist of the saved review workflow
+([`usg3p-fastpath-doc-review.js`](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/.claude/workflows/usg3p-fastpath-doc-review.js),
+removed from `main` on 2026-10-31 in [#80](https://github.com/NatePu/usg2bsd/issues/80))
 without running that multi-agent workflow. Findings, evidence and every doc
 change are logged in [JOURNAL.md](https://github.com/NatePu/usg2bsd/blob/bfcbfa81c120b656232740ed69c5172c41b91fd6/docs/JOURNAL.md) (IDs D-*, N-*, R-*). The
 revision-3 concurrency protocol (§5.3, §5.7) was re-walked against SMR, taskq
