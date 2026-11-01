@@ -2,13 +2,13 @@
 # Apply or remove a bench topology on the DUT (USG-3P, OpenBSD), runtime
 # only. Run as root:  sh bench/dut/topo.sh U|V|H|F up|down
 # Follows STOCK_TEST_PLAN.md sections 4 and 10; pf is disabled and its
-# previous state saved for "down".
+# previous state saved for "down" in /var/run, which only root can write.
 set -eu
 # shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 TOPO=${1:?topology U, V, H or F}
 ACT=${2:?up or down}
-STATE=/tmp/bench-pf-was
+STATE=/var/run/bench-pf-was
 
 vlan() {	# vlan N PARENT ADDR
 	ifconfig "vlan$1" create 2>/dev/null || true

@@ -3,7 +3,11 @@
 #
 # Run as root on the amd64 test VM booted from the flow kernel. It builds
 # its own scratch interfaces (vether, vlan, bridge, veb, trunk) and removes
-# them afterwards. Optional:
+# them afterwards. It also changes system state and restores it only when
+# it runs to the end: pf is disabled and reloaded from /etc/pf.conf, and
+# forwarding, redirect and multipath are toggled. GW= briefly overwrites
+# GW's ARP entry; IPSEC=1 flushes every IPsec flow and SA (ipsecctl -F).
+# Use a test VM with nothing else to lose. Optional:
 #   GW=<a live IPv4 neighbour>   check "arp -d" (gen_arp or gen_rt)
 #   IPSEC=1                      check an IPsec flow add (gen_ipsec)
 # PMTU updates and next-hop MAC changes need a peer; T2.7 covers them.
@@ -14,6 +18,8 @@ ok()  { echo "ok   $*"; }
 bad() { echo "FAIL $*"; fail=1; }
 ctr() { kstat flow:0:stats:0 | awk -v k="$1:" '$1 == k { print $2 }'; }
 q()   { "$@" >/dev/null 2>&1; }
+TMP=$(mktemp -d /tmp/t13.XXXXXXXXXX) || exit 1	# private, root-only
+trap 'rm -rf "${TMP:?}"' EXIT
 
 # expect COUNTER DESCRIPTION -- COMMAND...: COUNTER must increase
 expect() {
@@ -81,9 +87,8 @@ expect gen_if "trunk proto change" -- ifconfig $TR trunkproto failover
 expect gen_if "trunk port del" -- ifconfig $TR -trunkport $V2
 
 # bpf
-expect gen_bpf "tcpdump start" -- sh -c "tcpdump -ni $V >/dev/null 2>&1 & echo \$! > /tmp/t13.tcpdump; sleep 1"
-# shellcheck disable=SC2016 # expanded by the inner sh
-expect gen_bpf "tcpdump stop" -- sh -c 'kill $(cat /tmp/t13.tcpdump); sleep 1'
+expect gen_bpf "tcpdump start" -- sh -c "tcpdump -ni $V >/dev/null 2>&1 & echo \$! > $TMP/tcpdump.pid; sleep 1"
+expect gen_bpf "tcpdump stop" -- sh -c "kill \$(cat $TMP/tcpdump.pid); sleep 1"
 
 # sysctls (restored afterwards)
 fwd=$(sysctl -n net.inet.ip.forwarding)

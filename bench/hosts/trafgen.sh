@@ -28,6 +28,7 @@ TAG=0
 PAYLOAD=$((FRAME - 46 - TAG))
 [ "$PAYLOAD" -ge 0 ] || { echo "frame too small" >&2; exit 1; }
 CFG=$(mktemp /tmp/trafgen.XXXXXX)
+trap 'rm -f "$CFG"' EXIT
 i=0
 while [ $i -lt "$STREAMS" ]; do
 	{
@@ -43,4 +44,3 @@ while [ $i -lt "$STREAMS" ]; do
 done
 echo "trafgen: $WHO frame $FRAME payload $PAYLOAD streams $STREAMS rate $RATE num $NUM vid ${VID:-none} da $MAC"
 trafgen --dev "$IF" --conf "$CFG" --cpus 1 --rate "$RATE" --num "$NUM"
-rm -f "$CFG"
