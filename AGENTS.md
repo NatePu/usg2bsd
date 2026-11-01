@@ -101,9 +101,39 @@ G3 says so.
 - Builds and tests run on the OpenBSD build host and the board. macOS can
   read and edit the tree but cannot build it.
 
-## Coding standards and kernel constraints
+## Languages and coding standards
 
-- Follow OpenBSD Kernel Normal Form (`style(9)`).
+| Language | Used for | Runs on |
+|---|---|---|
+| C | the kernel fork (`src/`, kept as `patches/`); the flow-table harness | the USG-3P and the test VM; the harness on the Mac |
+| POSIX sh | every script in `tools/`, `tests/` and `bench/` | the Mac, the OpenBSD machines, the Linux bench hosts |
+| Python 3 | helpers for the development Mac (`tools/kcheck.py`) | the Mac only |
+
+- **C**: OpenBSD Kernel Normal Form (`style(9)`): tabs 8 wide, 80 columns.
+  Change only the upstream lines a task needs: no reformatting, renaming or
+  whitespace fixes, so the patch series stays small and reviewable against
+  OpenBSD.
+- **Shell**: POSIX sh, `#!/bin/sh`, no bash features: scripts run under
+  OpenBSD's sh (ksh), the Linux hosts' sh and macOS. Use `set -eu`, or
+  `set -u` in a script that collects failures and reports them at the end.
+  Quote every expansion unless splitting is the point, and then say so in a
+  `# shellcheck disable=...` comment. Scripts for the OpenBSD machines use
+  only the base system (sh, awk, sed, perl): no bash, Python or packages.
+- **Python**: only for tools that run on the development Mac; standard
+  library only; PEP 8, 4-space indentation.
+- **Patches**: `tools/fork-patches.sh` writes `patches/` from the commits in
+  `src/`. Never edit a patch by hand.
+- **Commits**: the repository is public, so author commits with the GitHub
+  no-reply address (`git config user.email
+  50584693+NatePu@users.noreply.github.com`), never a private address.
+- **Checks**: run `tools/lint.sh` before every commit (shellcheck, ruff,
+  whitespace, file modes, patch headers); CI runs it on every push. After a
+  change in `src/`, also run `tools/desk-check.sh`, which includes lint and
+  checks that `patches/` matches `src/`. `.editorconfig` gives editors the
+  indentation for each language; list new generated files in `.gitignore`.
+
+Kernel constraints:
+
 - **Concurrency**: Fast-path lookups must be lockless SMR readers
   (`smr_read_enter`). Flow mutations require `flow_mtx` or `ring_mtx`.
 - **Context restrictions**: Fast-path hit processing runs at

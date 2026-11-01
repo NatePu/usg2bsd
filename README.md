@@ -1,5 +1,7 @@
 # usg2bsd
 
+[![lint](https://github.com/NatePu/usg2bsd/actions/workflows/lint.yml/badge.svg)](https://github.com/NatePu/usg2bsd/actions/workflows/lint.yml)
+
 A CPU-assisted IPv4 fast path for the OpenBSD/octeon `cnmac(4)` driver on the
 Ubiquiti UniFi Security Gateway 3P (USG-3P). It is a lab fork of OpenBSD
 -current for that one box: not for production, and not meant for upstream.
@@ -47,20 +49,38 @@ and agents: [AGENTS.md](AGENTS.md).
 | [`tests/`](tests) | Acceptance scripts for the test VM, and a host harness for `if_flow.c`. |
 | [`bench/`](bench) | Bench topology, router configuration, traffic and measurement scripts. |
 
+## Development environment
+
+The fork is C: the OpenBSD kernel, written in OpenBSD's own style (`style(9)`).
+Every script is POSIX sh, because the scripts run on OpenBSD machines, whose
+base system has no bash or Python. One helper for the Mac is Python 3. The
+coding rules are in [AGENTS.md](AGENTS.md#languages-and-coding-standards);
+`.editorconfig` sets each language's indentation in most editors.
+
+| Machine | Used for | Needs |
+|---|---|---|
+| Development Mac (macOS) | editing, the desk checks, the issues | Xcode Command Line Tools (clang, flex, yacc), git, Python 3, and from Homebrew `gh` (with the `project` scope), `shellcheck` and `ruff` |
+| OpenBSD build host (amd64) | kernel builds, the test VM | OpenBSD -current at the pinned commit, a full `/usr/src`, the octeon cross tools ([DESIGN §7](docs/DESIGN.md#7-development-environment); not set up yet, [#10](https://github.com/NatePu/usg2bsd/issues/10)) |
+| USG-3P | the router under test | OpenBSD/octeon, booted over TFTP from the build host |
+| Linux hosts A and B | traffic generation and capture | iproute2, iperf3, netsniff-ng (`trafgen`), tcpdump, FRR ([`bench/`](bench)) |
+
 ## Building
 
 ```sh
 tools/fork-src.sh                  # OpenBSD src at the fork point plus patches/, in src/
 FULL=1 tools/fork-src.sh /usr/src  # a full tree, on the OpenBSD build host
-tools/desk-check.sh                # every check that runs on macOS
+tools/lint.sh                      # shellcheck, ruff, whitespace, file modes, patch headers
+tools/desk-check.sh                # every check that runs on macOS, lint included
 ```
 
 The kernel builds on OpenBSD only (`config GENERIC.MP` with `pseudo-device
-flow`). `tools/desk-check.sh` checks syntax with clang and the amd64 kernel
-flags, runs OpenBSD's `config(8)` for amd64 and octeon, checks `sysctl(8)`,
-and runs the real `if_flow.c` in a host harness. None of this replaces a build
-and boot on OpenBSD. To change the fork, commit in `src/` on branch `usg2bsd`,
-run `tools/fork-patches.sh`, and commit `patches/` here.
+flow`). `tools/desk-check.sh` runs the lint, checks that `patches/` matches
+the commits in `src/`, checks syntax with clang and the amd64 kernel flags,
+runs OpenBSD's `config(8)` for amd64 and octeon, checks `sysctl(8)`, and runs
+the real `if_flow.c` in a host harness. None of this replaces a build and boot
+on OpenBSD. CI runs `tools/lint.sh` on every push. To change the fork,
+commit in `src/` on branch `usg2bsd`, run `tools/fork-patches.sh`, and commit
+`patches/` here.
 
 ## License
 
