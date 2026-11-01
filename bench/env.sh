@@ -9,28 +9,28 @@
 #
 # cnmac0 is management/TFTP only. Override any value in the environment.
 
-: ${DUT_A_PORT:=cnmac1}		# DUT port facing A (and the H trunk)
-: ${DUT_B_PORT:=cnmac2}		# DUT port facing B
-: ${HOST_IF:=enp1s0}		# Linux endpoint NIC on A and B
-: ${VID_A:=10}
-: ${VID_B:=20}
-: ${VID_B2:=21}			# topology F only
+: "${DUT_A_PORT:=cnmac1}"		# DUT port facing A (and the H trunk)
+: "${DUT_B_PORT:=cnmac2}"		# DUT port facing B
+: "${HOST_IF:=enp1s0}"		# Linux endpoint NIC on A and B
+: "${VID_A:=10}"
+: "${VID_B:=20}"
+: "${VID_B2:=21}"			# topology F only
 
-: ${DUT_A:=10.250.1.1}		# /30 transits
-: ${HOST_A:=10.250.1.2}
-: ${DUT_B:=10.250.2.1}
-: ${HOST_B:=10.250.2.2}
-: ${DUT_B2:=10.250.3.1}
-: ${HOST_B2:=10.250.3.2}
-: ${MASK:=255.255.255.252}
+: "${DUT_A:=10.250.1.1}"		# /30 transits
+: "${HOST_A:=10.250.1.2}"
+: "${DUT_B:=10.250.2.1}"
+: "${HOST_B:=10.250.2.2}"
+: "${DUT_B2:=10.250.3.1}"
+: "${HOST_B2:=10.250.3.2}"
+: "${MASK:=255.255.255.252}"
 
-: ${TEST_A:=198.18.0.1}		# test addresses on the hosts' loopbacks
-: ${TEST_B:=198.19.0.1}
-: ${RID_DUT:=192.0.2.1}		# OSPF router IDs
-: ${RID_A:=198.18.0.1}
-: ${RID_B:=198.19.0.1}
+: "${TEST_A:=198.18.0.1}"		# test addresses on the hosts' loopbacks
+: "${TEST_B:=198.19.0.1}"
+: "${RID_DUT:=192.0.2.1}"		# OSPF router IDs
+: "${RID_A:=198.18.0.1}"
+: "${RID_B:=198.19.0.1}"
 
-: ${RESULTS:=./results}		# where every script writes its output
+: "${RESULTS:=./results}"		# where every script writes its output
 
 # logical DUT interfaces for a topology: dut_ifs TOPO -> "IF_A IF_B [IF_B2]"
 dut_ifs() {

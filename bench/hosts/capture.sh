@@ -3,6 +3,7 @@
 # addresses, sizes, TTL decrement, no fragmentation.
 #   sh bench/hosts/capture.sh LABEL [IF] [COUNT]
 set -eu
+# shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 L=${1:?label}
 IF=${2:-$HOST_IF}

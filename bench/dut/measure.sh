@@ -5,6 +5,7 @@
 # Output in $RESULTS/LABEL/. Per-core CPU uses top -b -S -H -s 5 (never -1).
 # Keep observation light; compare with an unmonitored trial.
 set -eu
+# shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 L=${1:?label}
 ACT=${2:?start or stop}

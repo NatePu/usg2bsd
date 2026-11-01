@@ -26,6 +26,7 @@ fi
 
 pid=$(gh project view "$NUM" --owner "$OWNER" --format json --jq .id)
 # field<TAB>option<TAB>field id<TAB>option id, for every single select
+# shellcheck disable=SC2016 # jq variables
 ids=$(gh project field-list "$NUM" --owner "$OWNER" --limit 100 \
     --format json --jq '.fields[] | select(.options) | .name as $f |
     .id as $fid | .options[] | [$f, .name, $fid, .id] | @tsv')
@@ -100,7 +101,8 @@ while IFS=$TAB read -r num url state labels; do
 		esac
 	fi
 
-	cur=$(echo "$items" | awk -F "$TAB" -v n="$num" '$1 == n { print; exit }')
+	cur=$(echo "$items" | awk -F "$TAB" -v n="$num" \
+	    '$1 == n { print; exit }')
 	if [ -n "$cur" ]; then
 		item=$(echo "$cur" | cut -f 2)
 		has=$(echo "$cur" | cut -f 3)
@@ -108,12 +110,12 @@ while IFS=$TAB read -r num url state labels; do
 		hap=$(echo "$cur" | cut -f 5)
 	elif [ "$DRY" = 1 ]; then
 		echo "#$num: not on the board; would add it"
-		item=new has= hak= hap=
+		item=new has='' hak='' hap=''
 	else
-		item=$(gh project item-add "$NUM" --owner "$OWNER" --url "$url" \
-		    --format json --jq .id)
+		item=$(gh project item-add "$NUM" --owner "$OWNER" \
+		    --url "$url" --format json --jq .id)
 		echo "#$num: added to the board"
-		has= hak= hap=
+		has='' hak='' hap=''
 	fi
 	set_field "$num" "$item" Status "$has" "$status"
 	set_field "$num" "$item" Kind "$hak" "$kind"

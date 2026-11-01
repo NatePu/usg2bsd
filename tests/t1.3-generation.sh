@@ -31,7 +31,7 @@ expect() {
 
 V=vether990 V2=vether991 VL=vlan990 BR=bridge990 VB=veb990 TR=trunk990
 cleanup() {
-	for i in $VL $BR $VB $TR $V $V2; do q ifconfig $i destroy; done
+	for i in $VL $BR $VB $TR $V $V2; do q ifconfig "$i" destroy; done
 	q route -q delete 198.51.100.0/24
 }
 cleanup
@@ -82,6 +82,7 @@ expect gen_if "trunk port del" -- ifconfig $TR -trunkport $V2
 
 # bpf
 expect gen_bpf "tcpdump start" -- sh -c "tcpdump -ni $V >/dev/null 2>&1 & echo \$! > /tmp/t13.tcpdump; sleep 1"
+# shellcheck disable=SC2016 # expanded by the inner sh
 expect gen_bpf "tcpdump stop" -- sh -c 'kill $(cat /tmp/t13.tcpdump); sleep 1'
 
 # sysctls (restored afterwards)
@@ -91,7 +92,8 @@ mp=$(sysctl -n net.inet.ip.multipath)
 expect gen_sysctl "forwarding" -- sysctl net.inet.ip.forwarding=$((fwd == 1 ? 0 : 1))
 expect gen_sysctl "redirect" -- sysctl net.inet.ip.redirect=$((1 - red))
 expect gen_sysctl "multipath" -- sysctl net.inet.ip.multipath=$((1 - mp))
-q sysctl net.inet.ip.forwarding=$fwd net.inet.ip.redirect=$red net.inet.ip.multipath=$mp
+q sysctl "net.inet.ip.forwarding=$fwd" "net.inet.ip.redirect=$red" \
+    "net.inet.ip.multipath=$mp"
 expect gen_sysctl "net.flow.mode" -- sysctl net.flow.mode=3
 q sysctl net.flow.mode=0
 
@@ -119,8 +121,11 @@ if [ -n "${GW:-}" ]; then
 	b=$(( $(ctr gen_arp) + $(ctr gen_rt) ))
 	q arp -d "$GW"
 	a=$(( $(ctr gen_arp) + $(ctr gen_rt) ))
-	[ "$a" -gt "$b" ] && ok "arp -d: gen_arp+gen_rt $b -> $a" ||
-	    bad "arp -d: no bump"
+	if [ "$a" -gt "$b" ]; then
+		ok "arp -d: gen_arp+gen_rt $b -> $a"
+	else
+		bad "arp -d: no bump"
+	fi
 fi
 if [ "${IPSEC:-0}" = 1 ]; then
 	expect gen_ipsec "ipsec flow add" -- sh -c \

@@ -27,6 +27,7 @@ fi
 git init -q -b usg2bsd-init "$DIR"
 git -C "$DIR" remote add origin "$URL"
 if [ "${FULL:-0}" != 1 ]; then
+	# shellcheck disable=SC2086 # one argument per directory
 	git -C "$DIR" sparse-checkout set $SPARSE
 fi
 git -C "$DIR" fetch -q --depth 1 --filter=blob:none origin "$BASE"

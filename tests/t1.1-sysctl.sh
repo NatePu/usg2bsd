@@ -14,7 +14,7 @@ ok()  { echo "ok   $*"; }
 bad() { echo "FAIL $*"; fail=1; }
 get() { sysctl -n "net.flow.$1"; }
 # set KNOB VALUE: prints sysctl's stderr; returns 0 if no warning
-set_knob() { sysctl -q "net.flow.$1=$2" 2>&1 >/dev/null; }
+set_knob() { { sysctl -q "net.flow.$1=$2" >/dev/null; } 2>&1; }
 gen_sysctl() { kstat flow:0:stats:0 | awk '$1 == "gen_sysctl:" { print $2 }'; }
 
 expect_set() {		# KNOB VALUE: accepted and read back
@@ -77,22 +77,35 @@ done
 # 5. budget/yield: stored only while off; re-run the transition when active
 sysctl -q net.flow.mode=0
 g0=$(gen_sysctl); expect_set budget 32; g1=$(gen_sysctl)
-[ "$g1" = "$g0" ] && ok "mode 0: budget stored without a transition" ||
-    bad "mode 0: budget change bumped gen_sysctl ($g0 -> $g1)"
+if [ "$g1" = "$g0" ]; then
+	ok "mode 0: budget stored without a transition"
+else
+	bad "mode 0: budget change bumped gen_sysctl ($g0 -> $g1)"
+fi
 sysctl -q net.flow.mode=3
 g2=$(gen_sysctl); expect_set budget 48; g3=$(gen_sysctl)
-[ "$g3" -gt "$g2" ] && ok "mode 3: budget change ran a transition" ||
-    bad "mode 3: budget change did not bump gen_sysctl ($g2 -> $g3)"
+if [ "$g3" -gt "$g2" ]; then
+	ok "mode 3: budget change ran a transition"
+else
+	bad "mode 3: budget change did not bump gen_sysctl ($g2 -> $g3)"
+fi
 g4=$(gen_sysctl); sysctl -q net.flow.yield=7; g5=$(gen_sysctl)
-[ "$g5" -gt "$g4" ] && ok "mode 3: yield change ran a transition" ||
-    bad "mode 3: yield change did not bump gen_sysctl ($g4 -> $g5)"
+if [ "$g5" -gt "$g4" ]; then
+	ok "mode 3: yield change ran a transition"
+else
+	bad "mode 3: yield change did not bump gen_sysctl ($g4 -> $g5)"
+fi
 sysctl -q net.flow.mode=0
 
 # 6. yield reads back the effective (rounded) value. amd64 registers no
 # MD rounding, so it is the value written; on octeon compare with T0.9.
 sysctl -q net.flow.yield=7
 y=$(get yield)
-[ "$y" -ge 7 ] && ok "yield 7 reads back as $y" || bad "yield 7 reads back as $y"
+if [ "$y" -ge 7 ]; then
+	ok "yield 7 reads back as $y"
+else
+	bad "yield 7 reads back as $y"
+fi
 
 # restore: everything in mode 0 (max needs it), the mode last
 sysctl -q net.flow.mode=0

@@ -3,10 +3,11 @@
 # the "static-route" half of every comparison. Run as root on the DUT:
 #   sh bench/dut/routes.sh add|delete
 set -eu
+# shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 ACT=${1:?add or delete}
-route -q $ACT -host $TEST_A $HOST_A
-route -q $ACT -host $TEST_B $HOST_B
-route -n get $TEST_A >/dev/null 2>&1 && route -n get $TEST_A | grep -E 'gateway|interface|flags'
-route -n get $TEST_B >/dev/null 2>&1 && route -n get $TEST_B | grep -E 'gateway|interface|flags'
+route -q "$ACT" -host "$TEST_A" "$HOST_A"
+route -q "$ACT" -host "$TEST_B" "$HOST_B"
+route -n get "$TEST_A" >/dev/null 2>&1 && route -n get "$TEST_A" | grep -E 'gateway|interface|flags'
+route -n get "$TEST_B" >/dev/null 2>&1 && route -n get "$TEST_B" | grep -E 'gateway|interface|flags'
 true

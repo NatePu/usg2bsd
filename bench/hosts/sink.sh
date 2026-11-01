@@ -5,6 +5,7 @@
 #   sh bench/hosts/sink.sh A|B add|show|del [IF]
 # IF defaults to enp1s0 (use enp1s0.20 on B in topology V).
 set -eu
+# shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 WHO=${1:?A or B}
 ACT=${2:?add, show or del}

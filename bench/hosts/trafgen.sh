@@ -7,6 +7,7 @@
 # ingress MAC comes from the neighbour table, so ping the gateway first.
 # Validate with NUM=1000 and the receive sink before measuring.
 set -eu
+# shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 WHO=${1:?A or B}
 FRAME=${2:?frame size including FCS}

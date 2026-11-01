@@ -4,6 +4,7 @@
 #   sh bench/hosts/setup.sh A|B U|V|H|F up|down
 # NOSTATIC=1 skips the static route to the peer (OSPF runs: FRR installs it).
 set -eu
+# shellcheck source=../env.sh
 . "$(dirname "$0")/../env.sh"
 WHO=${1:?A or B}
 TOPO=${2:?U, V, H or F}
